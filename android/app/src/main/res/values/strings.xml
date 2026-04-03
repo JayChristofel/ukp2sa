@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">UKP2SA</string>
+    <string name="title_activity_main">UKP2SA</string>
+    <string name="package_name">com.ukp2sa.app</string>
+    <string name="custom_url_scheme">com.ukp2sa.app</string>
+</resources>

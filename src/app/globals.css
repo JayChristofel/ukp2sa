@@ -1,0 +1,346 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* 
+     MASTER DESIGN SYSTEM - UKP2SA
+     VIBE: PREMIUM GEN-Z PROFESSIONAL
+     THEME: VIOLET & SKY (GIGA SYNC v2)
+  */
+
+  /* --- CORE COLORS --- */
+  --color-primary: #8b5cf6;
+  --color-primary-50: #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+  --color-primary-950: #2e1065;
+
+  --color-accent: #0ea5e9;
+  --color-accent-50: #f0f9ff;
+  --color-accent-100: #e0f2fe;
+  --color-accent-200: #bae6fd;
+  --color-accent-300: #7dd3fc;
+  --color-accent-400: #38bdf8;
+  --color-accent-500: #0ea5e9;
+  --color-accent-600: #0284c7;
+  --color-accent-700: #0369a1;
+  --color-accent-800: #075985;
+  --color-accent-900: #0c4a6e;
+  --color-accent-950: #082f49;
+
+  --color-navy: #0f172a;
+  --color-charcoal: #334155;
+
+  /* FULL COLOR PALETTE */
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
+
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+
+  --color-rose-50: #fff1f2;
+  --color-rose-100: #ffe4e6;
+  --color-rose-500: #f43f5e;
+
+  --color-indigo-50: #eef2ff;
+  --color-indigo-100: #e0e7ff;
+  --color-indigo-500: #6366f1;
+
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+
+  --color-purple-50: #faf5ff;
+  --color-purple-100: #f3e8ff;
+  --color-purple-500: #a855f7;
+  --color-purple-600: #9333ea;
+
+  --color-violet-50: #f5f3ff;
+  --color-violet-500: #8b5cf6;
+
+  --color-teal-50: #f0fdfa;
+  --color-teal-500: #14b8a6;
+  --color-teal-800: #115e59;
+
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+
+  --color-orange-50: #fff7ed;
+  --color-orange-500: #f97316;
+
+  /* --- TYPOGRAPHY --- */
+  --font-display: "Inter", sans-serif;
+  --font-inter: var(--font-inter);
+
+  /* FLUID HEADINGS (RESTORED) */
+  --text-clamp-heading: clamp(2.5rem, 9vw, 5rem);
+  --text-clamp-subheading: clamp(1.125rem, 2vw, 1.5rem);
+
+  /* --- BREAKPOINTS --- */
+  --breakpoint-xs: 480px;
+
+  /* --- SHADOWS --- */
+  --shadow-bento: 0 0 0 1px rgba(0, 0, 0, 0.03), 0 2px 4px rgba(0, 0, 0, 0.05),
+    0 12px 24px rgba(0, 0, 0, 0.05);
+  --shadow-bento-dark: 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 2px 4px rgba(0, 0, 0, 0.2), 0 12px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.15);
+  --shadow-glow-accent: 0 0 15px rgba(14, 165, 233, 0.4);
+
+  /* --- ANIMATIONS --- */
+  --animate-spin-slow: spin 8s linear infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --fluid-spacing: clamp(1rem, 2vw + 1rem, 2rem);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  body {
+    background: #f8f9fa;
+    color: #334155;
+    font-family: Inter, sans-serif;
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .dark body {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+}
+
+@layer utilities {
+  /* THE SIGNATURE GRADIENTS */
+  .neon-gradient-text {
+    background: linear-gradient(135deg, #8b5cf6 0%, #0ea5e9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* BENTO CARD (UNIVERSAL) */
+  .bento-card {
+    @apply relative transition-all duration-500 overflow-hidden;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 2.5rem;
+    padding: 2rem;
+    box-shadow: var(--shadow-bento);
+  }
+
+  .dark .bento-card {
+    background: rgba(15, 23, 42, 0.7);
+    border-color: rgba(51, 65, 85, 0.5);
+    box-shadow: var(--shadow-bento-dark);
+  }
+
+  /* FULL COLOR SAFELIST (FOR DYNAMIC ADMIN STATES) */
+  .bg-primary\/5 {
+    background-color: rgba(139, 92, 246, 0.05);
+  }
+  .bg-primary\/10 {
+    background-color: rgba(139, 92, 246, 0.1);
+  }
+  .bg-primary\/20 {
+    background-color: rgba(139, 92, 246, 0.2);
+  }
+  .bg-accent\/5 {
+    background-color: rgba(14, 165, 233, 0.05);
+  }
+  .bg-accent\/10 {
+    background-color: rgba(14, 165, 233, 0.1);
+  }
+  .bg-accent\/20 {
+    background-color: rgba(14, 165, 233, 0.2);
+  }
+  .bg-emerald-500\/5 {
+    background-color: rgba(16, 185, 129, 0.05);
+  }
+  .bg-emerald-500\/10 {
+    background-color: rgba(16, 185, 129, 0.1);
+  }
+  .bg-emerald-500\/20 {
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+  .bg-amber-500\/10 {
+    background-color: rgba(245, 158, 11, 0.1);
+  }
+  .bg-rose-500\/10 {
+    background-color: rgba(244, 63, 94, 0.1);
+  }
+  .bg-indigo-500\/10 {
+    background-color: rgba(99, 102, 241, 0.1);
+  }
+  .bg-blue-500\/10 {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+  .bg-purple-500\/10 {
+    background-color: rgba(168, 85, 247, 0.1);
+  }
+  .bg-green-500\/10 {
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  .bg-red-500\/10 {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  .bg-red-500\/\[0\.02\] {
+    background-color: rgba(239, 68, 68, 0.02);
+  }
+  .bg-orange-500\/10 {
+    background-color: rgba(249, 115, 22, 0.1);
+  }
+  .bg-violet-500\/10 {
+    background-color: rgba(139, 92, 246, 0.1);
+  }
+
+  /* Borders / Ring with Opacity */
+  .border-primary\/10 {
+    border-color: rgba(139, 92, 246, 0.1);
+  }
+  .border-primary\/20 {
+    border-color: rgba(139, 92, 246, 0.2);
+  }
+  .border-accent\/20 {
+    border-color: rgba(14, 165, 233, 0.2);
+  }
+  .border-emerald-500\/20 {
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  .border-amber-500\/20 {
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  .border-red-500\/20 {
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  .border-violet-500\/20 {
+    border-color: rgba(139, 92, 246, 0.2);
+  }
+  .border-orange-500\/20 {
+    border-color: rgba(249, 115, 22, 0.2);
+  }
+
+  /* --- TIPTAP EDITOR STYLES --- */
+  .ProseMirror {
+    @apply outline-none min-h-[300px] text-navy dark:text-white leading-relaxed text-sm;
+  }
+  .ProseMirror p {
+    @apply mb-4;
+  }
+  .ProseMirror h1 {
+    @apply text-4xl font-black mb-6 tracking-tight;
+  }
+  .ProseMirror h2 {
+    @apply text-2xl font-black mb-4 tracking-tight;
+  }
+  .ProseMirror h3 {
+    @apply text-xl font-black mb-3 tracking-tight;
+  }
+  .ProseMirror ul {
+    @apply list-disc pl-6 mb-4 space-y-2;
+  }
+  .ProseMirror ol {
+    @apply list-decimal pl-6 mb-4 space-y-2;
+  }
+  .ProseMirror blockquote {
+    @apply border-l-4 border-primary pl-6 italic my-8 text-slate-500;
+  }
+  .ProseMirror img {
+    @apply rounded-[2rem] shadow-2xl my-10 max-w-full h-auto;
+  }
+
+  /* --- LEAFLET CUSTOM STYLES --- */
+  .leaflet-container {
+    background: #0f172a !important;
+    font-family: "Inter", sans-serif !important;
+  }
+  .custom-popup .leaflet-popup-content-wrapper {
+    @apply rounded-[2rem] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 dark:border-slate-800 shadow-2xl p-2;
+  }
+  .custom-popup .leaflet-popup-tip {
+    background: white;
+  }
+  .dark .custom-popup .leaflet-popup-tip {
+    background: #0f172a;
+  }
+
+  /* MISC ADMIN UTILITIES */
+  .tracking-line {
+    @apply absolute left-[14px] top-6 bottom-6 w-0.5 bg-slate-100 dark:bg-slate-800;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* CUSTOM SCROLLBAR */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-200 dark:bg-slate-800 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary-400;
+}

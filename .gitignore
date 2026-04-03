@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Next.js Build Output
+.next/
+out/
+build/
+
+# Environment Variables (SENSITIF!)
+.env
+.env.local
+.env.production
+.env.staging
+
+# ZIP Archives (Gak perlu di repo)
+*.zip
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Capacitor (Mobile Build)
+android/app/build/
+ios/App/Pods/
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.log
