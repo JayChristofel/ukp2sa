@@ -27,7 +27,7 @@ import {
   Award,
   Satellite,
 } from "lucide-react";
-import { useSession } from "@/stores/authStore";
+import { useSession, useAuthStore } from "@/stores/authStore";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppMode } from "@/hooks/useAppMode";
@@ -91,13 +91,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   }
 
   const handleLogout = async () => {
-    const csrfRes = await fetch("/api/auth/csrf");
-    const { csrfToken } = await csrfRes.json();
-    await fetch("/api/auth/signout", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `csrfToken=${csrfToken}`,
-    });
+    const { logout } = useAuthStore.getState();
+    await logout();
     window.location.href = `/${lang}/auth/login`;
   };
 

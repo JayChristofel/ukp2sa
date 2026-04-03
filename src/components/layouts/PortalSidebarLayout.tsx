@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Settings } from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
 
 interface PortalSidebarLayoutProps {
   children: React.ReactNode;
@@ -91,18 +92,8 @@ const SidebarContent: React.FC<PortalSidebarLayoutProps> = ({
   }, [pathname]);
 
   const handleLogout = async () => {
-    // Ambil CSRF token dulu (wajib buat NextAuth)
-    const csrfRes = await fetch("/api/auth/csrf");
-    const { csrfToken } = await csrfRes.json();
-
-    // POST ke signout endpoint buat hancurin session
-    await fetch("/api/auth/signout", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `csrfToken=${csrfToken}`,
-    });
-
-    // Redirect manual ke login
+    const { logout } = useAuthStore.getState();
+    await logout();
     window.location.href = `/${lang}/auth/login`;
   };
 
