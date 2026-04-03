@@ -98,7 +98,8 @@ export default function KPIPage() {
     const list = [];
 
     // 1. Social - Food Aid
-    const totalBeneficiaries = ngoData.reduce(
+    const safeNgoData = Array.isArray(ngoData) ? ngoData : [];
+    const totalBeneficiaries = safeNgoData.reduce(
       (acc: number, cur: any) =>
         acc + (cur.interventionBeneficiariesCount || 0),
       0,
@@ -117,9 +118,10 @@ export default function KPIPage() {
     });
 
     // 2. Social - Missing Persons
-    const totalMissing = missingData.length || 120;
+    const safeMissingData = Array.isArray(missingData) ? missingData : [];
+    const totalMissing = safeMissingData.length || 120;
     const resolvedMissing =
-      missingData.filter((m: any) => m.missingPersonStatus === "Selesai")
+      safeMissingData.filter((m: any) => m.missingPersonStatus === "Selesai")
         .length || 85;
     list.push({
       id: "kpi-social-2",
@@ -134,9 +136,10 @@ export default function KPIPage() {
     });
 
     // 3. Infrastructure - Public Fac
-    const totalFac = facData.length || 45;
+    const safeFacData = Array.isArray(facData) ? facData : [];
+    const totalFac = safeFacData.length || 45;
     const resolvedFac =
-      facData.filter((f: any) => f.damageScale === "Tidak ada kerusakan")
+      safeFacData.filter((f: any) => f.damageScale === "Tidak ada kerusakan")
         .length || 32;
     list.push({
       id: "kpi-infra-1",
@@ -151,8 +154,9 @@ export default function KPIPage() {
     });
 
     // 4. Infrastructure - Housing (R3P)
+    const safeR3pData = Array.isArray(r3pData) ? r3pData : [];
     const totalDamages =
-      r3pData.reduce(
+      safeR3pData.reduce(
         (acc: number, cur: any) =>
           acc + (cur.buildingDamages?.heavilyDamagedCount || 0),
         0,
@@ -171,8 +175,9 @@ export default function KPIPage() {
     });
 
     // 5. Economy - Budget
+    const safeClearingData = Array.isArray(clearingData) ? clearingData : [];
     const totalAllocated =
-      clearingData.reduce(
+      safeClearingData.reduce(
         (acc: number, cur: any) => acc + (cur.budget || 0),
         0,
       ) || 50000000000;
