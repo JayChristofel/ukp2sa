@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiService } from "@/services/unifiedService";
 import { useAuditLogger } from "@/hooks/useAuditLogger";
 import { useI18n } from "@/app/[lang]/providers";
+import { REGENCY_COORDINATES } from "@/lib/constants";
 
 const MapComponent = dynamic(
   () => import("@/components/sections/MapComponent"),
@@ -156,6 +157,67 @@ export default function SatelliteIntelPage() {
   // Derive effective layer to avoid synchronous setState in useEffect
   const effectiveLayer = activeLayer || layers[0]?.id;
 
+  const externalMarkers = useMemo(() => {
+    const markers: any[] = [];
+    
+    if (effectiveLayer === "S1" && r3pRanking) {
+       r3pRanking.forEach((item: any, i: number) => {
+         const coords = REGENCY_COORDINATES[item.regency]; 
+         
+         // Mock coordinate for demo if not found (Deterministic offset based on index)
+         const mockOffset = ((i * 7) % 10) * 0.2 - 1;
+         const lat = coords ? coords[0] : 4.6951 + mockOffset;
+         const lon = coords ? coords[1] : 96.7494 + mockOffset;
+         
+         markers.push({
+           id: `r3p-${i}`,
+           lat,
+           lon,
+           type: "report", 
+           markerType: item.heavyHouses > 1000 ? "bencana" : "report",
+           subject: `[R3P] ${item.regency}`,
+           data: {
+             question: `Kerusakan: ${item.totalHouses.toLocaleString()} Rumah, ${item.heavyRoadKm} Km Jalan.`,
+             author_name: "Satelit BNPB",
+             classification: "Satelit"
+           }
+         });
+       });
+    }
+
+    if (effectiveLayer === "S2" && ngoGrouped) {
+       ngoGrouped.forEach((org: any, i: number) => {
+         org.regencies.forEach((r: string, j: number) => {
+           const coords = REGENCY_COORDINATES[r];
+           
+           // Deterministic slight offset for visual separation
+           const latOffset = ((i + j) % 5) * 0.01 - 0.02;
+           const lonOffset = ((i * j) % 5) * 0.01 - 0.02;
+           const mockOffset = ((i * 3 + j) % 10) * 0.2 - 1;
+
+           const lat = coords ? coords[0] + latOffset : 4.6951 + mockOffset;
+           const lon = coords ? coords[1] + lonOffset : 96.7494 + mockOffset;
+           
+           markers.push({
+             id: `ngo-${i}-${j}`,
+             lat,
+             lon,
+             type: "posko",
+             markerType: "posko",
+             subject: `[NGO] ${org.name} (${r})`,
+             data: {
+               question: `Program: ${org.count} | Penerima Manfaat: ${org.beneficiaries} Jiwa.`,
+               author_name: org.name,
+               classification: "Intervensi"
+             }
+           });
+         });
+       });
+    }
+
+    return markers;
+  }, [effectiveLayer, r3pRanking, ngoGrouped]);
+
   const alerts =
     metrics?.precipitation && metrics.precipitation > 5
       ? [
@@ -199,7 +261,7 @@ export default function SatelliteIntelPage() {
             {loadingLayers ? (
               <div className="py-10 animate-pulse bg-slate-100 dark:bg-slate-800 rounded-2xl" />
             ) : (
-              layers.map((layer) => (
+              layers.map((layer: any) => (
                 <button
                   key={layer.id}
                   onClick={() => handleLayerToggle(layer.id)}
@@ -257,13 +319,13 @@ export default function SatelliteIntelPage() {
         <div className="lg:col-span-3">
           <Card className="p-2 border-none shadow-2xl rounded-[2.5rem] bg-white dark:bg-slate-900 overflow-hidden relative">
             <div className="relative h-[70vh] w-full rounded-[2rem] overflow-hidden">
-              <MapComponent showMarkers={false} />
+              <MapComponent showMarkers={true} externalMarkers={externalMarkers} />
               <div className="absolute top-4 right-4 md:top-6 md:right-16 z-[450]">
                 <Badge className="bg-navy/80 backdrop-blur-md text-white border-white/10 rounded-lg px-4 py-2 flex items-center gap-2 shadow-2xl">
                   <div className="size-2 rounded-full bg-emerald-500 animate-ping" />
                   <span className="font-black uppercase text-[10px] tracking-widest whitespace-nowrap">
                     {si.active_analysis || "Active Analysis"}:{" "}
-                    {layers.find((l) => l.id === effectiveLayer)?.name || "N/A"}
+                    {layers.find((l: any) => l.id === effectiveLayer)?.name || "N/A"}
                   </span>
                 </Badge>
               </div>

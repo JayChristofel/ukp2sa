@@ -444,6 +444,13 @@ export const apiService = {
 
   // --- ANALYTICS & DASHBOARD ---
 
+  getSatelliteLayers: async () => {
+    return [
+      { id: "S1", name: "SATELLITE IMAGERY (R3P DAMAGE)", type: "Rainfall" },
+      { id: "S2", name: "VULNERABILITY ANALYSIS (NGO)", type: "Mountain" }
+    ];
+  },
+
   getSatelliteMetrics: async (lat = 4.6951, lon = 96.7494) => {
     try {
       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=cloud_cover,relative_humidity_2m,precipitation&hourly=visibility`);
