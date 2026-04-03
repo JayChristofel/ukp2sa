@@ -20,7 +20,7 @@ export function signJWT(payload: JWTPayload): string {
 /** Verify & decode JWT token, return null kalo invalid/expired */
 export function verifyJWT(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JWTPayload;
   } catch {
     return null;
   }

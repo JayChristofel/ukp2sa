@@ -15,13 +15,18 @@ export async function POST(request: Request) {
     const uploadedUrls = [];
 
     for (const file of files) {
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      // 1. Validasi Extension/MIME yang Halal ditaruh di R2 (Hindari XSS File poisoning kayak .svg / .html)
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      if (!allowedTypes.includes(file.type)) {
+        return NextResponse.json({ error: "Extensi file haram/tidak lolos standar keamanan!" }, { status: 400 });
+      }
+
+      // 2. Sanitasi & Enkripsi Nama File (Buang nama aslinya, pakai Random UUID tulen)
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const crypto = require("crypto");
       
-      // Sanitasi nama file & tambahin timestamp biar unik
-      const timestamp = Date.now();
-      const sanitizedName = file.name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9.-]/g, "");
-      const finalFileName = `${timestamp}-${sanitizedName}`;
+      const ext = file.name.split('.').pop()?.substring(0, 4) || 'bin'; 
+      const finalFileName = `${crypto.randomUUID()}.${ext}`;
       
       const key = `${folder}/${finalFileName}`;
       const bucketName = process.env.R2_BUCKET_NAME;

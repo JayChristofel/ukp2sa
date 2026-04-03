@@ -11,11 +11,12 @@ import { createClient } from '@supabase/supabase-js';
  */
 export function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+  // GUNAKAN MASTER KEY jika ada, fallback ke publishable key jika tdk ada
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     console.error("❌ [Supabase Admin] URL atau Key KOSONG di environment!");
-    throw new Error("Supabase configuration missing. Check your .env file.");
+    throw new Error("Supabase configuration missing (Need SERVICE_ROLE_KEY). Check your .env file.");
   }
 
   return createClient(supabaseUrl, supabaseKey, {

@@ -18,8 +18,13 @@ export function secureRoute(
 ) {
   return async (req: Request) => {
     try {
-      // 0. Rate Limiting (Prevent Brute force/DoS)
-      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      // 0. Rate Limiting + Securing IP (Prevent IP Spoofing)
+      const xff = req.headers.get("x-forwarded-for");
+      const cfIp = req.headers.get("cf-connecting-ip");
+      
+      // Terbaik: Percaya pada Cloudflare IP dulu, kalau ga ada, ambil IP PERTAMA (yang asli) dari XFF
+      let ip = cfIp || (xff ? xff.split(",")[0].trim() : "127.0.0.1");
+
       const rlResult = await rateLimit(ip, options.limit || 100, options.windowMs);
       
       if (!rlResult.success) {

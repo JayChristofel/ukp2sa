@@ -37,10 +37,13 @@ export class AuditService {
       let ip = "internal-call";
       let ua = "system";
 
-      // 1. Extract IP & User Agent (Browser)
+      // 1. Extract IP & User Agent (Browser) securely
       try {
         const headerList = await headers();
-        ip = headerList.get("x-forwarded-for") || headerList.get("remote-addr") || ip;
+        const cfIp = headerList.get("cf-connecting-ip");
+        const xff = headerList.get("x-forwarded-for");
+        
+        ip = cfIp || (xff ? xff.split(",")[0].trim() : headerList.get("remote-addr")) || ip;
         ua = headerList.get("user-agent") || ua;
       } catch {
         // Silently fails if not in a request context (e.g. background job)

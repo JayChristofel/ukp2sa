@@ -85,6 +85,8 @@ export async function generateStaticParams() {
 }
 
 import { ThemeProvider } from "next-themes";
+import { verifyJWT, SESSION_COOKIE_NAME } from "@/lib/jwt";
+import { cookies } from "next/headers";
 
 export default async function LocaleLayout({
   children,
@@ -96,6 +98,28 @@ export default async function LocaleLayout({
   const { lang } = await params;
   const dict = await getDictionary(lang);
 
+  // VULN-002 FIX: Prevent full application dictionary exposure to public 
+  // Strip sensitive admin/internal keys if the user doesn't have an established secure session
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const session = token ? verifyJWT(token) : null;
+  
+  const isAuthorized = session && ["superadmin", "admin", "partner", "ngo"].includes(session.role);
+  
+  let safeDict = dict;
+  if (!isAuthorized) {
+    // Deep clone is required to not mutate the cached static dictionary in memory!
+    safeDict = JSON.parse(JSON.stringify(dict));
+    
+    // Purge highly sensitive structural data mapping
+    delete safeDict.settings;
+    delete safeDict.roles;
+    delete safeDict.users;
+    delete safeDict.assignments;
+    delete safeDict.clearing_house;
+    delete safeDict.financial;
+  }
+
   return (
     <html lang={lang} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
@@ -105,7 +129,7 @@ export default async function LocaleLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Providers dict={dict}>
+          <Providers dict={safeDict}>
             {children}
             <Toaster
               closeButton
