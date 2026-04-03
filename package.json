@@ -11,6 +11,7 @@
     "build": "next build",
     "build:mobile": "ren src\\app\\api _api_temp && set BUILD_MODE=mobile&& next build && npx cap sync && ren src\\app\\_api_temp api",
     "build:web": "set BUILD_MODE=web&& next build",
+    "build:vercel": "next build",
     "build:cpanel": "set BUILD_MODE=web&& next build && if not exist .next\\standalone\\.next\\static (mkdir .next\\standalone\\.next\\static) && xcopy /E /I /Y .next\\static .next\\standalone\\.next\\static && if not exist .next\\standalone\\public (mkdir .next\\standalone\\public) && xcopy /E /I /Y public .next\\standalone\\public",
     "start": "node server.js",
     "lint": "eslint",
