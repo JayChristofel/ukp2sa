@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/server";
-import { encode } from "next-auth/jwt";
+import { createAdminClient } from "@/lib/supabase-admin";
+import { signJWT } from "@/lib/jwt";
 import crypto from "crypto";
 
+/** POST /api/auth/refresh — Refresh access token (Mobile) */
 export async function POST(request: Request) {
   try {
     const { refreshToken: oldRefreshToken } = await request.json();
 
     if (!oldRefreshToken) {
-      return NextResponse.json(
-        { error: "Refresh token is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Refresh token is required" }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
-    // 1. Validate the refresh token against the database
+    // 1. Validate refresh token
     const { data: storedToken, error } = await supabase
       .from("refresh_tokens")
       .select("*, users(*)")
@@ -25,86 +23,57 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !storedToken) {
-      return NextResponse.json(
-        { error: "Invalid or expired refresh token" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid or expired refresh token" }, { status: 401 });
     }
 
-    // Check if the token is expired
+    // Cek expiry
     if (new Date(storedToken.expires_at) < new Date()) {
-       // Auto-revoke expired tokens for safety
-       await supabase.from("refresh_tokens").update({ is_revoked: true }).eq("token", oldRefreshToken);
-       
-       return NextResponse.json(
-        { error: "Refresh token has expired. Please login again." },
-        { status: 401 }
-      );
+      await supabase.from("refresh_tokens").update({ is_revoked: true }).eq("token", oldRefreshToken);
+      return NextResponse.json({ error: "Refresh token expired. Please login again." }, { status: 401 });
     }
 
     const user = storedToken.users;
 
-    // --- ACCESSS TOKEN GENERATION ---
-    const tokenPayload = {
+    // 2. Fetch permissions
+    let permissions: string[] = [];
+    if (user.role) {
+      const { data: roleData } = await supabase
+        .from("roles")
+        .select("permissions")
+        .eq("id", user.role)
+        .single();
+      permissions = roleData?.permissions || [];
+    }
+
+    // 3. Generate new access token (custom JWT)
+    const newAccessToken = signJWT({
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
       instansiId: user.instansi_id || null,
-    };
-
-    const isProd = process.env.NODE_ENV === "production";
-    const salt = isProd ? "__Secure-authjs.session-token" : "authjs.session-token";
-
-    // Generate new Access Token
-    const newAccessToken = await encode({
-      token: tokenPayload,
-      secret: process.env.AUTH_SECRET as string,
-      salt: salt,
-      maxAge: 3600, // 1 Hour for mobile
+      permissions,
     });
 
-    // --- REFRESH TOKEN ROTATION (ELITE SECURITY) ---
-    // Invalidate the old token and generate a new one
-    const newRefreshToken = crypto.randomBytes(40).toString('hex');
+    // 4. Rotate refresh token
+    const newRefreshToken = crypto.randomBytes(40).toString("hex");
     const newExpiresAt = new Date();
-    newExpiresAt.setDate(newExpiresAt.getDate() + 30); // 30 Days expiry
+    newExpiresAt.setDate(newExpiresAt.getDate() + 30);
 
-    // 1. Revoke the old one
     await supabase.from("refresh_tokens").update({ is_revoked: true }).eq("token", oldRefreshToken);
-
-    // 2. Insert the new one
-    const { error: refreshError } = await supabase
-      .from("refresh_tokens")
-      .insert([
-        {
-          user_id: user.id,
-          token: newRefreshToken,
-          expires_at: newExpiresAt.toISOString(),
-        }
-      ]);
-
-    if (refreshError) throw refreshError;
+    await supabase.from("refresh_tokens").insert([
+      { user_id: user.id, token: newRefreshToken, expires_at: newExpiresAt.toISOString() },
+    ]);
 
     return NextResponse.json({
       status: "success",
-      message: "Token refreshed successfully",
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
-      expiresIn: 3600,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        instansiId: user.instansi_id,
-      },
+      expiresIn: 28800,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, instansiId: user.instansi_id, permissions },
     });
   } catch (err: any) {
     console.error("⛔ [Refresh API Error]:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

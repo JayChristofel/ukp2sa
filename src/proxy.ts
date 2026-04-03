@@ -1,19 +1,14 @@
-import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { decode } from "next-auth/jwt";
-import { match as matchLocale } from '@formatjs/intl-localematcher';
-import Negotiator from 'negotiator';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { match as matchLocale } from "@formatjs/intl-localematcher";
+import Negotiator from "negotiator";
 
-const { auth } = NextAuth(authConfig); // Pake Auth helper dari config yang EDGE-SAFE
+const SESSION_COOKIE_NAME = "ukp2sa-session";
+const locales = ["id", "en"];
+const defaultLocale = "id";
 
-const locales = ['id', 'en'];
-const defaultLocale = 'id';
-
-// Roles Access Definition
-const ADMIN_ROLES = ['superadmin', 'admin', 'presiden', 'deputi', 'operator'];
-const PORTAL_ROLES = ['partner', 'ngo', 'operator'];
+const ADMIN_ROLES = ["superadmin", "admin", "presiden", "deputi", "operator"];
+const PORTAL_ROLES = ["partner", "ngo", "operator"];
 
 function getLocale(request: NextRequest): string {
   const negotiatorHeaders: Record<string, string> = {};
@@ -22,139 +17,132 @@ function getLocale(request: NextRequest): string {
   return matchLocale(languages, locales, defaultLocale);
 }
 
-export const proxy = auth(async (req) => {
-  const { nextUrl } = req;
-  const pathname = nextUrl.pathname;
-  
-  // 🛡️ PRODUCTION DEBUG LOG (Check your cPanel Node.js logs)
-  if (process.env.NODE_ENV === "production") {
-    console.log(`[🛡️ PROXY] Attempting access to: ${pathname}`);
+/** Decode JWT payload tanpa verify (Edge-compatible). Verify dilakukan di API routes. */
+function decodeJWTPayload(token: string): any | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+    // Cek expiry secara manual
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
   }
+}
 
-  // 1. --- UNIFIED AUTH: Multi-Channel Session Detection ---
-  // A. NextAuth v5 standard session (Cookies)
-  let session = req.auth; 
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // B. Mobile Bearer Token Injection (Authorization: Bearer <token>)
-  const authHeader = req.headers.get("authorization");
-  if (!session && authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.split(" ")[1];
-    try {
-      const isProd = process.env.NODE_ENV === "production";
-      const sessionTokenName = isProd ? "__Secure-authjs.session-token" : "authjs.session-token";
+  // --- SESSION DETECTION ---
+  let session: any = null;
 
-      const decodedUser = await decode({
-        token,
-        secret: process.env.AUTH_SECRET as string,
-        salt: sessionTokenName,
-      });
-
-      if (decodedUser) {
-        if (isProd) console.log(`[📱 MOBILE AUTH] Validated user: ${decodedUser.email}`);
-        session = { user: decodedUser } as any;
-      }
-    } catch {
-      console.warn("Invalid or Expired Mobile Token Attempted.");
+  // A. Web: Baca dari HTTP-Only Cookie
+  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (sessionToken) {
+    const decoded = decodeJWTPayload(sessionToken);
+    if (decoded) {
+      session = { user: decoded };
     }
   }
 
-  // 1. --- i18n REDIRECTION ---
+  // B. Mobile: Baca dari Authorization header
+  const authHeader = request.headers.get("authorization");
+  if (!session && authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1];
+    const decoded = decodeJWTPayload(token);
+    if (decoded) {
+      session = { user: decoded };
+    }
+  }
+
+  // --- i18n REDIRECTION ---
   const pathnameIsMissingLocale = locales.every(
     (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
   );
 
   if (pathnameIsMissingLocale) {
-    const locale = getLocale(req);
+    const locale = getLocale(request);
     return NextResponse.redirect(
-      new URL(`/${locale}${pathname === '/' ? '' : pathname}`, req.url)
+      new URL(`/${locale}${pathname === "/" ? "" : pathname}`, request.url)
     );
   }
 
-  // 2. --- RBAC & AUTH AUTHORIZATION ---
-  const segments = pathname.split('/').filter(Boolean);
+  // --- RBAC & AUTH ---
+  const segments = pathname.split("/").filter(Boolean);
   const lang = segments[0];
   const section = segments[1];
 
-  const isAuthPage = section === 'auth';
-  const isAdminPage = section === 'admin';
-  const isPortalPage = section === 'portal';
+  const isAuthPage = section === "auth";
+  const isAdminPage = section === "admin";
+  const isPortalPage = section === "portal";
+  const isMobileRequest = !!authHeader?.startsWith("Bearer ");
 
-  const isMobileRequest = !!req.headers.get("authorization")?.startsWith("Bearer ");
-
-  // Utility buat handle "Tendangan" (Redirect buat Web, JSON buat Mobile)
   const kick = (targetUrl: string) => {
     if (isMobileRequest) {
-      return NextResponse.json({ error: "Unauthorized or Forbidden", code: 401 }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized", code: 401 }, { status: 401 });
     }
-    const url = new URL(targetUrl, req.url);
-    url.searchParams.set("callbackUrl", req.nextUrl.pathname);
+    const url = new URL(targetUrl, request.url);
+    url.searchParams.set("callbackUrl", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   };
 
-  // Auth Protection Logic
+  // Protected routes — belum login
   if ((isAdminPage || isPortalPage) && !session) {
     return kick(`/${lang}/auth/login`);
   }
 
+  // Admin RBAC
   if (isAdminPage && session?.user?.role) {
     if (!ADMIN_ROLES.includes(session.user.role)) {
       return kick(`/${lang}`);
     }
   }
 
+  // Portal RBAC + Tenant Isolation
   if (isPortalPage && session?.user?.role) {
     if (!PORTAL_ROLES.includes(session.user.role)) {
       return kick(`/${lang}`);
     }
 
-    // 🛡️ TENANT ISOLATION: User hanya bisa akses instansi miliknya sendiri
     const userRole = session.user.role;
-    const userInstansiId = (session.user as any).instansiId;
-    
-    // User role partner/ngo WAJIB punya instansiId
-    if (['partner', 'ngo'].includes(userRole) && !userInstansiId) {
-      console.error(`[SECURITY] User ${session.user.email} with role ${userRole} is missing instansiId.`);
+    const userInstansiId = session.user.instansiId;
+
+    if (["partner", "ngo"].includes(userRole) && !userInstansiId) {
       return kick(`/${lang}/auth/login`);
     }
 
-    // Cek apakah user lagi di /portal/partner/...
-    if (segments[2] === 'partner') {
+    if (segments[2] === "partner") {
       const urlSegment = segments[3];
-      
-      // Kalo segment-nya bukan 'id', berarti ini link legacy/dynamic -> ALAHIN ke static 'id'
-      if (urlSegment !== 'id') {
-        const targetId = urlSegment || userInstansiId;
-        return kick(`/${lang}/portal/partner/id?id=${targetId}`);
+      if (urlSegment !== "id") {
+        return kick(`/${lang}/portal/partner/id?id=${urlSegment || userInstansiId}`);
       }
-
-      const urlInstansiId = req.nextUrl.searchParams.get("id");
-
-      // Kalo instansiId di URL beda sama punya user → TENDANG ke instansi sendiri
+      const urlInstansiId = request.nextUrl.searchParams.get("id");
       if (userInstansiId && urlInstansiId !== userInstansiId) {
         return kick(`/${lang}/portal/partner/id?id=${userInstansiId}`);
       }
     }
   }
 
+  // Redirect kalo udah login tapi buka halaman auth
   if (isAuthPage && session) {
-    const userInstansiId = (session.user as any).instansiId;
-    const redirectUrl = ADMIN_ROLES.includes(session.user.role) 
-      ? `/${lang}/admin` 
-      : userInstansiId 
+    const userInstansiId = session.user.instansiId;
+    const redirectUrl = ADMIN_ROLES.includes(session.user.role)
+      ? `/${lang}/admin`
+      : userInstansiId
         ? `/${lang}/portal/partner/id?id=${userInstansiId}`
         : `/${lang}`;
-    
-    // Lo gak butuh redirect kalo lo manggil api login dari mobile, lo butuh json response yg udh ada di route api
+
     if (!isMobileRequest) {
-      return NextResponse.redirect(new URL(redirectUrl, req.url));
+      return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
   }
 
   return NextResponse.next();
-});
+}
 
 export default proxy;
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|assets|favicon.ico).*)']
+  matcher: ["/((?!api|_next/static|_next/image|assets|favicon.ico).*)"],
 };

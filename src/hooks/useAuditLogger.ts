@@ -2,7 +2,7 @@
 
 import { apiService } from "@/services/unifiedService";
 import { useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 
 /**
  * Hook to easily send activities to the Global Audit Trail

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 import { usePathname, useRouter } from "next/navigation";
 import { ShieldOff, ArrowLeft, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";

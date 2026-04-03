@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { Mail, CheckCircle2, Loader2, Sparkles, LogIn, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/app/[lang]/providers";
-import { forgotPasswordAction } from "@/app/actions/auth";
+
 import { forgotPasswordSchema } from "@/lib/validations";
 
 export default function ForgotPasswordPage() {
@@ -34,15 +34,22 @@ export default function ForgotPasswordPage() {
     }
 
     setLoading(true);
-    const forgotPromise = forgotPasswordAction(formData, lang);
+    const forgotPromise = fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, lang }),
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    });
 
     toast.promise(forgotPromise, {
       loading: lang === "en" ? "Transmitting recovery link..." : "Mengirim link pemulihan...",
-      success: (data: any) => {
-        if (data.error) throw new Error(data.error);
+      success: () => {
         setSubmitted(true);
         setLoading(false);
-        return data.success;
+        return lang === "en" ? "Reset link sent!" : "Link reset terkirim!";
       },
       error: (err: any) => {
         setLoading(false);

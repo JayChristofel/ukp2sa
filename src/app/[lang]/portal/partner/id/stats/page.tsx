@@ -39,7 +39,7 @@ import { Card } from "@/components/ui";
 import { ReportStatus } from "@/lib/types";
 import { PARTNERS_DATA } from "@/lib/constants";
 
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 import { ShieldAlert, ArrowRight } from "lucide-react";
 
 const SkeletonValue = ({ width = "w-16", height = "h-8" }) => (

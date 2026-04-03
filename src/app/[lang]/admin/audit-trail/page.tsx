@@ -363,7 +363,7 @@ export default function AuditTrailPage() {
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
               />
               <input
-                value={userFilter}
+                value={userFilter || ""}
                 onChange={(e) => {
                   setUserFilter(e.target.value);
                   setCurrentPage(1);

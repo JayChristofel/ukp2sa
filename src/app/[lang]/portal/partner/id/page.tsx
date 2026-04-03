@@ -15,7 +15,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { PARTNERS_DATA } from "@/lib/constants";
 import { useI18n } from "@/app/[lang]/providers";
 import { ReportStatus } from "@/lib/types";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 import { useQuery } from "@tanstack/react-query";
 import { apiService } from "@/services/unifiedService";
 

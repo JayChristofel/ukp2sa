@@ -1,104 +1,126 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import bcrypt from "bcryptjs";
-import { encode } from "next-auth/jwt";
 import crypto from "crypto";
+import { signJWT, SESSION_COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/jwt";
+
+/** Redirect URL resolver berdasarkan role user */
+function getRedirectUrl(role: string, instansiId: string | null, lang: string): string {
+  const ADMIN_ROLES = ["superadmin", "admin", "presiden", "deputi", "operator"];
+  const PORTAL_ROLES = ["partner", "ngo"];
+
+  if (ADMIN_ROLES.includes(role)) return `/${lang}/admin`;
+  if (PORTAL_ROLES.includes(role) && instansiId) return `/${lang}/portal/partner/id?id=${instansiId}`;
+  return `/${lang}`;
+}
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, password, lang = "id", platform } = body;
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required" },
+        { error: lang === "en" ? "Email and password are required." : "Email dan password wajib diisi." },
         { status: 400 }
       );
     }
 
     const supabase = createAdminClient();
+    const loginEmail = email.toString().toLowerCase();
 
-    // Fetch user from database with role permissions
+    // 1. Fetch user + role permissions
     const { data: user, error } = await supabase
       .from("users")
-      .select("*, roles(permissions)")
-      .eq("email", email)
+      .select("*")
+      .ilike("email", loginEmail)
       .single();
 
-    if (error || !user || !user.password) {
+    if (error || !user) {
+      console.error("❌ [AUTH] User not found:", loginEmail, error?.message);
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: lang === "en" ? "Invalid email or password." : "Email atau password salah." },
         { status: 401 }
       );
     }
 
-    // Verify password
+    if (!user.password) {
+      console.error("❌ [AUTH] No password set for:", loginEmail);
+      return NextResponse.json(
+        { error: lang === "en" ? "Invalid email or password." : "Email atau password salah." },
+        { status: 401 }
+      );
+    }
+
+    // 2. Verify password
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
+      console.warn("⚠️ [AUTH] Password mismatch:", loginEmail);
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: lang === "en" ? "Invalid email or password." : "Email atau password salah." },
         { status: 401 }
       );
     }
 
-    // --- ACCESS TOKEN GENERATION ---
+    // 3. Fetch permissions dari tabel roles
+    let permissions: string[] = [];
+    if (user.role) {
+      const { data: roleData } = await supabase
+        .from("roles")
+        .select("permissions")
+        .eq("id", user.role)
+        .single();
+      permissions = roleData?.permissions || [];
+    }
+
+    // 4. Generate JWT Token
     const tokenPayload = {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
       instansiId: user.instansi_id || null,
-      permissions: (user as any).roles?.permissions || [],
+      permissions,
     };
 
-    const isProd = process.env.NODE_ENV === "production";
-    const salt = isProd ? "__Secure-authjs.session-token" : "authjs.session-token";
+    const accessToken = signJWT(tokenPayload);
+    const isMobile = platform === "mobile";
 
-    // Generate JWT Access Token (Short-lived by strategy, but let's assume default maxAge)
-    const accessToken = await encode({
-      token: tokenPayload,
-      secret: process.env.AUTH_SECRET as string,
-      salt: salt,
-      maxAge: 3600, // 1 Hour for mobile
-    });
+    console.log(`✅ [AUTH] Login success: ${user.email} | Platform: ${isMobile ? "Mobile" : "Web"}`);
 
-    // --- REFRESH TOKEN GENERATION ---
-    const refreshToken = crypto.randomBytes(40).toString('hex');
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 Days expiry
+    // --- MOBILE: Return tokens di body ---
+    if (isMobile) {
+      const refreshToken = crypto.randomBytes(40).toString("hex");
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Save refresh token to database
-    const { error: refreshError } = await supabase
-      .from("refresh_tokens")
-      .insert([
-        {
-          user_id: user.id,
-          token: refreshToken,
-          expires_at: expiresAt.toISOString(),
-        }
+      await supabase.from("refresh_tokens").insert([
+        { user_id: user.id, token: refreshToken, expires_at: expiresAt.toISOString() },
       ]);
 
-    if (refreshError) throw refreshError;
+      return NextResponse.json({
+        status: "success",
+        accessToken,
+        refreshToken,
+        expiresIn: 28800,
+        user: tokenPayload,
+      });
+    }
 
-    return NextResponse.json({
+    // --- WEB: Set HTTP-Only Cookie + return redirect URL ---
+    const redirectUrl = getRedirectUrl(user.role, user.instansi_id, lang);
+
+    const response = NextResponse.json({
       status: "success",
-      message: "Authentication successful",
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      expiresIn: 3600,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        instansiId: user.instansi_id,
-        permissions: (user as any).roles?.permissions || [],
-      },
+      user: tokenPayload,
+      redirectUrl,
     });
+
+    response.cookies.set(SESSION_COOKIE_NAME, accessToken, COOKIE_OPTIONS);
+
+    return response;
   } catch (err: any) {
-    console.error("⛔ [Mobile Login API Error]:", err);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    console.error("⛔ [AUTH API Error]:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

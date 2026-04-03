@@ -30,7 +30,6 @@
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
     "@tanstack/react-query": "^5.90.20",
-    "@tanstack/react-virtual": "^3.13.19",
     "@tiptap/extension-image": "^3.19.0",
     "@tiptap/extension-link": "^3.19.0",
     "@tiptap/extension-placeholder": "^3.19.0",
@@ -44,12 +43,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^16.0.3",
     "embla-carousel-react": "^8.6.0",
-    "express": "^4.18.2",
     "framer-motion": "^12.33.0",
     "idn-area-data": "^4.0.1",
     "input-otp": "^1.4.2",
@@ -59,7 +55,6 @@
     "midtrans-client": "^1.4.3",
     "negotiator": "^1.0.0",
     "next": "16.2.1",
-    "next-auth": "5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "nodemailer": "^8.0.4",
     "postcss": "^8.5.6",
@@ -102,7 +97,6 @@
     "@types/react-dom": "19.2.3",
     "nodemailer": "^8.0.4",
     "lodash": "^4.17.21",
-    "tar": "^7.5.11",
-    "mongoose": "^9.3.3"
+    "tar": "^7.5.11"
   }
 }

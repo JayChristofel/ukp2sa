@@ -50,7 +50,7 @@
 | **Framework** | Next.js 16 (App Router + Turbopack) |
 | **Runtime** | React 19, TypeScript 5 |
 | **Database** | Supabase (PostgreSQL) |
-| **Auth** | NextAuth v5 (JWT + Credentials) |
+| **Auth** | Custom JWT (Cookies + Bearer Token) |
 | **Styling** | Tailwind CSS 4 |
 | **UI Components** | shadcn/ui (Radix UI) |
 | **State** | Zustand + TanStack Query v5 |
@@ -116,16 +116,16 @@ ukp2sa/
 │   │   │   ├── auth/         # Login, Register, Forgot Password
 │   │   │   ├── laporan/      # Detail laporan publik
 │   │   │   └── portal/       # Portal mitra/instansi
-│   │   ├── actions/          # Server Actions (auth, form)
-│   │   └── api/              # REST API endpoints
+│   │   └── api/              # REST API endpoints (Full MVC Logic)
 │   ├── components/           # Reusable UI components
 │   ├── hooks/                # Custom React hooks
 │   ├── lib/                  # Utilities, Supabase clients, validations
 │   ├── services/             # SyncManager, AuditService
+│   ├── stores/               # Zustand Store (Auth)
 │   └── types/                # TypeScript type definitions
 ├── supabase_schema.sql       # Database migration script
 ├── .env.example              # Template environment variables
-└── next.config.ts            # Next.js configuration
+└── next.config.ts            # Next.js configuration (Auto-detect Vercel/cPanel)
 ```
 
 ---
@@ -146,9 +146,10 @@ Superadmin ──→ Full access, bypass semua permission
 
 ### Multi-Channel Auth
 
-- **Web**: NextAuth v5 (HTTP-Only Cookie JWT)
-- **Mobile**: Bearer Token via `/api/auth/login` + Refresh Token
-- **Middleware**: `src/proxy.ts` — RBAC + i18n + Tenant Isolation
+Kita menggunakan arsitektur **Platform Agnostic Full API Auth** (Tanpa NextAuth / Server Actions):
+- **Web**: Mendapatkan JWT melalui HTTP-Only Cookie via jalur `POST /api/auth/login`. Aman dari XSS.
+- **Mobile**: Mendapatkan JWT + Refresh Token via body JSON. Dipasang pada request header `Bearer <token>`.
+- **Middleware**: `src/proxy.ts` membaca custom JWT. Menangani Edge-Compatible Route Guard, i18n, & Tenant Isolation.
 
 ---
 
@@ -156,7 +157,9 @@ Superadmin ──→ Full access, bypass semua permission
 
 | Method | Endpoint | Deskripsi |
 | :--- | :--- | :--- |
-| `POST` | `/api/auth/login` | Login (Mobile/API) |
+| `POST` | `/api/auth/login` | Login (Mengembalikan JSON Token atau mengatur HTTP-Only Cookie) |
+| `GET` | `/api/auth/session` | Decode session dan validasi JWT yang melekat |
+| `POST` | `/api/auth/logout` | Membersihkan session cookie |
 | `GET` | `/api/reports` | Daftar laporan |
 | `POST` | `/api/reports` | Buat laporan baru |
 | `GET` | `/api/admin/users` | Daftar user (Admin) |
@@ -169,19 +172,21 @@ Superadmin ──→ Full access, bypass semua permission
 
 ## 🏗️ Build & Deployment
 
+Didukung penuh untuk platform Serverless (Vercel) maupun Dedicated/Shared (cPanel). Configuration pada `next.config.ts` mendeteksi root variable platform secara dinamis.
+
 ### Build Scripts
 
 ```bash
 # Development (Turbopack)
 npm run dev
 
-# Production build (Web)
-npm run build:web
+# Production build untuk Vercel (Auto handle static routes & functions)
+npm run build:vercel
 
-# Production build + auto-copy static assets (cPanel)
+# Production build + auto-copy static assets untuk cPanel
 npm run build:cpanel
 
-# Mobile build (Capacitor)
+# Mobile build (Capacitor HTML Export)
 npm run build:mobile
 
 # Lint
@@ -190,8 +195,8 @@ npm run lint
 
 ### Deploy ke cPanel
 
-1. **Build**: `npm run build:cpanel`
-2. **Upload**: ZIP isi folder `.next/standalone/` → upload ke cPanel
+1. **Build**: `npm run build:cpanel` (via terminal lokal/Windows)
+2. **Upload**: ZIP isi folder `.next/standalone/` → upload ke cPanel file manager
 3. **Config**: Di cPanel Node.js Selector:
    - Application startup file: `server.js`
    - Node.js version: >= 22
@@ -200,6 +205,13 @@ npm run lint
    ```
    */5 * * * * curl -X GET "https://domain.id/api/sync?key=YOUR_SYNC_KEY" > /dev/null 2>&1
    ```
+
+### Deploy ke Vercel
+
+1. Hubungkan repository GitHub ke layanan Vercel
+2. Atur **Build Command** menjadi `npm run build:vercel` atau `next build`
+3. Masukkan `Environment Variables` dari file `.env.example` ke dashboard Vercel
+4. Klik **Deploy**! Vercel akan otomatis mengenali Next.js dan tidak akan menggunakan "standalone" build.
 
 ---
 

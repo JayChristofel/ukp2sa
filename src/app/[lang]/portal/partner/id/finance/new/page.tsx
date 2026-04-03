@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { PARTNERS_DATA } from "@/lib/constants";
 import { useI18n } from "@/app/[lang]/providers";
 
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 import { ShieldAlert, ArrowRight } from "lucide-react";
 
 export default function NewPortalFinance() {

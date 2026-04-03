@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/server";
-import { headers } from "next/headers";
-import { auth } from "@/auth";
+import { headers, cookies } from "next/headers";
+import { verifyJWT, SESSION_COOKIE_NAME } from "@/lib/jwt";
 
 /**
  * AuditService: Penjaga keaslian data UKP2SA.
@@ -22,7 +22,17 @@ export class AuditService {
   }) {
     try {
       const supabase = await createClient();
-      const session = await auth();
+      
+      let sessionUser = null;
+      try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+        if (token) {
+          sessionUser = verifyJWT(token);
+        }
+      } catch {
+        // Ignored, might be running out of request context
+      }
       
       let ip = "internal-call";
       let ua = "system";
@@ -44,8 +54,8 @@ export class AuditService {
           module: params.module,
           details: params.details || `Performed ${params.action} on ${params.module}`,
           level: params.level || "info",
-          user_email: session?.user?.email || "anonymous_system",
-          user_name: session?.user?.name || "System Runner",
+          user_email: sessionUser?.email || "anonymous_system",
+          user_name: sessionUser?.name || "System Runner",
           ip: ip,
           ua: ua,
           diff: params.diff || null, // JSON object of what changed
@@ -55,7 +65,7 @@ export class AuditService {
       if (error) {
         console.error("❌ [AuditService Error]:", error.message);
       } else {
-        console.log(`✅ [Audit] ${params.action} recorded for ${session?.user?.email || 'System'}`);
+        console.log(`✅ [Audit] ${params.action} recorded for ${sessionUser?.email || 'System'}`);
       }
     } catch (error: any) {
       // Don't throw error back to prevent breaking the main feature flow

@@ -27,7 +27,7 @@ import {
   Award,
   Satellite,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppMode } from "@/hooks/useAppMode";

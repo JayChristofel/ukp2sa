@@ -7,7 +7,7 @@ import { useRouter, useSearchParams, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Lock, Save, AlertTriangle, Loader2, Sparkles, RefreshCw, LogIn } from "lucide-react";
 import { useI18n } from "@/app/[lang]/providers";
-import { resetPasswordAction } from "@/app/actions/auth";
+
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -75,14 +75,21 @@ function ResetPasswordForm() {
     }
 
     setLoading(true);
-    const resetPromise = resetPasswordAction(formData, lang);
+    const resetPromise = fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password, lang }),
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    });
 
     toast.promise(resetPromise, {
       loading: lang === "en" ? "Updating security clearance..." : "Memperbarui password...",
-      success: (data: any) => {
-        if (data.error) throw new Error(data.error);
+      success: () => {
         router.push(`/${lang}/auth/login`);
-        return data.success;
+        return lang === "en" ? "Password updated!" : "Password berhasil diperbarui!";
       },
       error: (err: any) => {
         setLoading(false);

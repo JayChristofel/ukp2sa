@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { Eye, EyeOff, LogIn, Loader2, CheckCircle2, AlertCircle, Sparkles } from "lucide-react";
 import { useI18n } from "@/app/[lang]/providers";
-import { authenticate } from "@/app/actions/auth";
+import { useAuthStore } from "@/stores/authStore";
 import { loginSchema } from "@/lib/validations";
 
 function LoginForm() {
@@ -41,24 +41,18 @@ function LoginForm() {
     }
 
     try {
-      const result: any = await authenticate(formData, lang);
+      const { login } = useAuthStore.getState();
+      const result = await login(email, password, lang);
 
-      if (result?.error) {
-        setFormError(result.error);
+      if (!result.success) {
+        setFormError(result.error || "Login gagal.");
         setLoading(false);
         return;
       }
 
       setFormSuccess(lang === "en" ? "Success! Redirecting..." : "Berhasil masuk! Mengarahkan...");
-
-      // 🔥 NO RACE CONDITION: Use the redirectUrl from the server
-      if (result.redirectUrl) {
-        window.location.href = result.redirectUrl;
-      } else {
-        window.location.href = `/${lang}`;
-      }
-    } catch (err) {
-      if ((err as any)?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+      window.location.href = result.redirectUrl || `/${lang}`;
+    } catch {
       setFormError("Terjadi kesalahan. Silakan coba lagi.");
       setLoading(false);
     }

@@ -1,14 +1,15 @@
 import type { NextConfig } from "next";
 
 const isMobileBuild = process.env.BUILD_MODE === 'mobile';
+const isVercel = !!process.env.VERCEL;
 
 const nextConfig: NextConfig = {
 
   // Paket yang butuh native Node.js runtime — jangan di-bundle webpack/turbopack
   serverExternalPackages: ["nodemailer"],
 
-  // Wajib 'standalone' untuk cPanel biar hemat RAM, atau 'export' untuk mobile
-  output: isMobileBuild ? 'export' : 'standalone',
+  // Vercel: undefined (auto-handled), cPanel: standalone, Mobile: export
+  output: isMobileBuild ? 'export' : isVercel ? undefined : 'standalone',
   
   // Matiin optimasi gambar biar gak butuh native sharp di cPanel/Mobile
   images: {

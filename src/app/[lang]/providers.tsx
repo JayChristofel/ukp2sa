@@ -1,8 +1,12 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect } from "react";
 import { useTheme as useNextTheme } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAuthStore } from "@/stores/authStore";
+
+// Re-export auth hooks biar gak perlu ganti import di banyak file
+export { useAuth, useSession } from "@/stores/authStore";
 
 // Export hook helper with custom isDark & toggleTheme for backward compatibility
 export const useTheme = () => {
@@ -23,25 +27,15 @@ export const useTheme = () => {
 // Initialize QueryClient
 const queryClient = new QueryClient();
 
-import { useSession, SessionProvider } from "next-auth/react";
+/** Auth Initializer — fetch session sekali saat app mount */
+function AuthInitializer({ children }: { children: React.ReactNode }) {
+  const fetchSession = useAuthStore((s) => s.fetchSession);
 
-// --- Auth Context Wrapper ---
-export const useAuth = () => {
-  const { data: session, status } = useSession();
-  return { 
-    session, 
-    user: session?.user, 
-    isAuthenticated: status === "authenticated", 
-    isLoading: status === "loading" 
-  };
-};
+  useEffect(() => {
+    fetchSession();
+  }, [fetchSession]);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <SessionProvider>
-      {children}
-    </SessionProvider>
-  );
+  return <>{children}</>;
 }
 
 // --- i18n Context ---
@@ -57,12 +51,12 @@ export function Providers({
   dict?: any;
 }) {
   return (
-    <AuthProvider>
+    <AuthInitializer>
       <QueryClientProvider client={queryClient}>
         <I18nContext.Provider value={dict}>
           {children}
         </I18nContext.Provider>
       </QueryClientProvider>
-    </AuthProvider>
+    </AuthInitializer>
   );
 }

@@ -8,7 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { UserPlus, Loader2, Sparkles } from "lucide-react";
 import { useI18n } from "@/app/[lang]/providers";
-import { registerUser } from "@/app/actions/auth";
+
 import { registerSchema } from "@/lib/validations";
 import { toast } from "sonner";
 
@@ -43,18 +43,25 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    const registerPromise = registerUser(formData, lang);
+    const registerPromise = fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password, lang }),
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data;
+    });
 
     toast.promise(registerPromise, {
       loading: lang === "en" ? "Processing entry..." : "Memproses pendaftaran...",
-      success: (data: any) => {
-        if (data.error) throw new Error(data.error);
+      success: () => {
         router.push(`/${lang}/auth/login`);
         return lang === "en" ? "Account created! Please sign in." : "Akun berhasil dibuat! Silakan login.";
       },
       error: (err: any) => {
         setLoading(false);
-        return err.message || (lang === "en" ? "Verification failed." : "Gagal bikin akun.");
+        return err.message || (lang === "en" ? "Registration failed." : "Gagal bikin akun.");
       },
     });
 

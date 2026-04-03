@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { verifyJWT, SESSION_COOKIE_NAME } from "@/lib/jwt";
+import { cookies } from "next/headers";
 import { ZodSchema } from "zod";
 import { rateLimit } from "./rate-limit";
 
@@ -36,8 +37,27 @@ export function secureRoute(
         });
       }
 
-      // 1. Session check (NextAuth v5)
-      const session = await auth();
+      // 1. Session check (Custom JWT fallback)
+      let sessionUser = null;
+
+      // Cek header Authorization (Mobile) dulu
+      const authHeader = req.headers.get("authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
+        sessionUser = verifyJWT(token);
+      }
+
+      // Kalo gak ada lewat header, cek lewat cookie (Web)
+      if (!sessionUser) {
+        const cookieStore = await cookies();
+        const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+        if (token) {
+          sessionUser = verifyJWT(token);
+        }
+      }
+
+      const session = sessionUser ? { user: sessionUser } : null;
+
       if (!session || !session.user) {
         return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
       }

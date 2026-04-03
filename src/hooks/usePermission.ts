@@ -1,4 +1,4 @@
-import { useSession } from "next-auth/react";
+import { useSession } from "@/stores/authStore";
 
 /**
  * Hook untuk mengecek permission di Client Component

@@ -48,7 +48,7 @@ export const apiService = {
   getMissingPersons: async (page = 1) => {
     try {
       // 🛡️ LOCAL-FIRST: SAR category reports are mirrored missing persons
-      const { createClient } = await import("@/utils/supabase/client");
+      const { createClient } = await import("@/lib/client");
       const supabase = createClient();
       const { data: localData } = await supabase
         .from('reports')
@@ -197,7 +197,7 @@ export const apiService = {
     try {
       // 🛡️ LOCAL-FIRST: Fetch from our own database (Synced via SyncManager)
       // This avoids CORS and Network Errors in production
-      const { createClient } = await import("@/utils/supabase/client");
+      const { createClient } = await import("@/lib/client");
       const supabase = createClient();
       const { data: localData } = await supabase
         .from('reports')
@@ -584,7 +584,7 @@ export const apiService = {
 
   getPartners: async (): Promise<any[]> => {
     try {
-      const { createClient } = await import("@/utils/supabase/client");
+      const { createClient } = await import("@/lib/client");
       const supabase = createClient();
       const { data, error } = await supabase
         .from('partners')
@@ -605,7 +605,7 @@ export const apiService = {
 
   getReportsByAgency: async (agencyId: string) => {
     try {
-      const { createClient } = await import("@/utils/supabase/client");
+      const { createClient } = await import("@/lib/client");
       const supabase = createClient();
       const { data, error } = await supabase
         .from('reports')
@@ -620,7 +620,7 @@ export const apiService = {
 
   getFinancialsByAgency: async (agencyId: string) => {
     try {
-      const { createClient } = await import("@/utils/supabase/client");
+      const { createClient } = await import("@/lib/client");
       const supabase = createClient();
       const { data, error } = await supabase
         .from('financial_records')
