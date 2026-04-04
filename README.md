@@ -128,29 +128,6 @@ ukp2sa/
 
 ---
 
-## 🔐 Autentikasi & Otorisasi
-
-### Role Hierarchy
-
-```
-Superadmin ──→ Full access, bypass semua permission
-  ├── Presiden ──→ Dashboard executive, KPI, ekonomi
-  ├── Deputi ──→ Laporan, financial, donor
-  ├── Admin ──→ User management, roles, settings
-  ├── Operator ──→ CRUD laporan, assignments, tracking
-  ├── Partner ──→ Portal instansi (BPBD, SAR, dll)
-  └── NGO ──→ Portal organisasi (PMI, ACF, dll)
-```
-
-### Multi-Channel Auth
-
-Kita menggunakan arsitektur **Platform Agnostic Full API Auth** (Tanpa NextAuth / Server Actions):
-- **Web**: Mendapatkan JWT melalui HTTP-Only Cookie via jalur `POST /api/auth/login`. Aman dari XSS.
-- **Mobile**: Mendapatkan JWT + Refresh Token via body JSON. Dipasang pada request header `Bearer <token>`.
-- **Middleware**: `src/proxy.ts` membaca custom JWT. Menangani Edge-Compatible Route Guard, i18n, & Tenant Isolation.
-
----
-
 ## 📡 API Endpoints
 
 | Method | Endpoint | Deskripsi |
