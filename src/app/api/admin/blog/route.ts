@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
-export async function GET(req: Request) {
+/** GET /api/admin/blog — Fetch blog posts for admin management panel */
+const getHandler = async (req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
@@ -52,4 +54,6 @@ export async function GET(req: Request) {
     console.error("Blog API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
+
+export const GET = secureRoute(getHandler);

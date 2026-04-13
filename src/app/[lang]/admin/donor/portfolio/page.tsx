@@ -140,15 +140,26 @@ export default function DonorPortfolioPage() {
     return [...clearingHouseData]
       .reverse()
       .slice(0, 5)
-      .map((ch: any, i: number) => ({
-        ...ch,
-        details: `${
-          ch.programName || ch.title
-        } mencatat realisasi anggaran di ${ch.location}`,
-        timestamp:
-          ch.lastUpdate || 
-          new Date(new Date("2024-03-20T00:00:00Z").getTime() - i * 150000).toISOString(),
-      }));
+      .map((ch: any, i: number) => {
+        let validDate = new Date(
+          new Date("2024-03-20T00:00:00Z").getTime() - i * 150000
+        ).toISOString();
+        
+        if (ch.lastUpdate) {
+          const parsed = new Date(ch.lastUpdate);
+          if (!isNaN(parsed.getTime())) {
+            validDate = parsed.toISOString();
+          }
+        }
+
+        return {
+          ...ch,
+          details: `${
+            ch.programName || ch.title
+          } mencatat realisasi anggaran di ${ch.location}`,
+          timestamp: validDate,
+        };
+      });
   }, [clearingHouseData]);
 
   const formatCurrency = (val: number) => {

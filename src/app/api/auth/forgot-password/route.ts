@@ -2,11 +2,34 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { sendMail } from "@/lib/mail";
 import crypto from "crypto";
+import { rateLimit } from "@/lib/rate-limit";
 
 /** POST /api/auth/forgot-password — Kirim email reset password */
 export async function POST(request: Request) {
   try {
-    const { email, lang = "id" } = await request.json();
+    // Rate limiting: max 3 forgot-password request per 15 menit per IP
+    const xff = request.headers.get("x-forwarded-for");
+    const cfIp = request.headers.get("cf-connecting-ip");
+    const ip = cfIp || (xff ? xff.split(",")[0].trim() : "127.0.0.1");
+
+    const rl = await rateLimit(ip, 3, 15 * 60 * 1000);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." },
+        { status: 429, headers: { "Retry-After": "900" } }
+      );
+    }
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Format permintaan tidak valid." },
+        { status: 400 }
+      );
+    }
+
+    const { email, lang = "id" } = body;
 
     if (!email) {
       return NextResponse.json(
@@ -67,6 +90,6 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     console.error("⛔ [Forgot Password Error]:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Terjadi kesalahan. Silakan coba lagi." }, { status: 500 });
   }
 }

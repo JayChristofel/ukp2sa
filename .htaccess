@@ -1,0 +1,51 @@
+# ============================================================
+# UKP2SA Security .htaccess — Pentest Remediation
+# ============================================================
+
+# --- VULN-003: Strip LiteSpeed tech disclosure header ---
+Header unset x-turbo-charged-by
+Header unset X-Turbo-Charged-By
+Header always unset x-turbo-charged-by
+Header always unset X-Turbo-Charged-By
+
+# --- VULN-007: Block backup/archive files ---
+<FilesMatch "\.(zip|tar|gz|bz2|7z|rar|bak|sql|dump|old|swp|sav)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# --- VULN-008: Block .git, .env, and other sensitive dotfiles ---
+<DirectoryMatch "^(.*/)?\.git">
+    Order allow,deny
+    Deny from all
+</DirectoryMatch>
+
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Explicitly block known sensitive files
+<FilesMatch "(\.env|\.git|\.gitignore|\.htpasswd|composer\.json|composer\.lock|package\.json|package-lock\.json|yarn\.lock|tsconfig\.json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# --- Block source code files from direct access ---
+<FilesMatch "\.(ts|tsx|jsx|mjs|map)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# --- Block common CMS/config probing paths ---
+RedirectMatch 404 /wp-admin
+RedirectMatch 404 /wp-login
+RedirectMatch 404 /wp-content
+RedirectMatch 404 /xmlrpc.php
+RedirectMatch 404 /phpmyadmin
+
+# --- Prevent directory listing ---
+Options -Indexes
+
+# --- Disable server signature ---
+ServerSignature Off

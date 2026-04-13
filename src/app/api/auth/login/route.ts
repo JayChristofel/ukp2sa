@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase-admin";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { signJWT, SESSION_COOKIE_NAME, COOKIE_OPTIONS } from "@/lib/jwt";
+import { rateLimit } from "@/lib/rate-limit";
 
 /** Redirect URL resolver berdasarkan role user */
 function getRedirectUrl(role: string, instansiId: string | null, lang: string): string {
@@ -16,7 +17,29 @@ function getRedirectUrl(role: string, instansiId: string | null, lang: string): 
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    // Rate limiting: max 5 login attempts per 15 menit per IP
+    const xff = request.headers.get("x-forwarded-for");
+    const cfIp = request.headers.get("cf-connecting-ip");
+    const ip = cfIp || (xff ? xff.split(",")[0].trim() : "127.0.0.1");
+
+    const rl = await rateLimit(ip, 5, 15 * 60 * 1000);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan login. Coba lagi dalam 15 menit." },
+        { status: 429, headers: { "Retry-After": "900" } }
+      );
+    }
+    // Safe JSON parsing — malformed body gak boleh trigger 500
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Format permintaan tidak valid." },
+        { status: 400 }
+      );
+    }
+
     const { email, password, lang = "id", platform } = body;
 
     if (!email || !password) {
@@ -121,6 +144,6 @@ export async function POST(request: Request) {
     return response;
   } catch (err: any) {
     console.error("⛔ [AUTH API Error]:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Terjadi kesalahan. Silakan coba lagi." }, { status: 500 });
   }
 }

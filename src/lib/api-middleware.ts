@@ -23,7 +23,7 @@ export function secureRoute(
       const cfIp = req.headers.get("cf-connecting-ip");
       
       // Terbaik: Percaya pada Cloudflare IP dulu, kalau ga ada, ambil IP PERTAMA (yang asli) dari XFF
-      let ip = cfIp || (xff ? xff.split(",")[0].trim() : "127.0.0.1");
+      const ip = cfIp || (xff ? xff.split(",")[0].trim() : "127.0.0.1");
 
       const rlResult = await rateLimit(ip, options.limit || 100, options.windowMs);
       
@@ -91,7 +91,7 @@ export function secureRoute(
       return await handler(req, { session, body });
     } catch (error: any) {
       console.error("[API ERROR]", error);
-      return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+      return NextResponse.json({ success: false, error: "Terjadi kesalahan pada server." }, { status: 500 });
     }
   };
 }

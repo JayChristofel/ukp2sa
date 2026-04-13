@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
+/**
+ * GET /api/reports — Public read access (no PII exposed).
+ * NIK dan Phone TIDAK di-select — safe buat publik.
+ */
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -8,7 +13,6 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "50");
     
     // Security: Only select PUBLIC fields. Exclude NIK and Phone.
-    // Explicit selection is safer than wildcard for public APIs.
     const { data: reports, error } = await supabase
       .from("reports")
       .select("id, title, description, location, regency, status, category, source, latitude, longitude, images, satellite_intel, created_at, updated_at")
@@ -24,13 +28,12 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+/** POST /api/reports — Create new report (protected, wajib login) */
+export const POST = secureRoute(async (request: Request) => {
   try {
     const supabase = await createClient();
     const body = await request.json();
     
-    // In Supabase, if ID is provided, it will use it. 
-    // We should ensure the fields match our schema (contact_phone, etc.)
     const { data: newReport, error } = await supabase
       .from("reports")
       .insert([body])
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    // --- AUDIT LOG ---
+    // Audit log
     const { AuditService } = await import("@/services/AuditService");
     await AuditService.log({
       action: "CREATE_REPORT",
@@ -55,9 +58,10 @@ export async function POST(request: Request) {
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(request: Request) {
+/** DELETE /api/reports — Remove report + cleanup storage (protected, wajib login) */
+export const DELETE = secureRoute(async (request: Request) => {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
@@ -67,7 +71,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Method not allowed on root. ID is required." }, { status: 405 });
     }
 
-    // 1. Cari data laporan buat ambil list gambar
+    // Cari data laporan buat ambil list gambar
     const { data: report, error: fetchError } = await supabase
       .from("reports")
       .select("images")
@@ -78,13 +82,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Laporan nggak ketemu!" }, { status: 404 });
     }
 
-    // 2. Kalau ada gambar, hapus dari R2 dulu (Storage Cleanup)
+    // Kalau ada gambar, hapus dari R2 dulu (Storage Cleanup)
     if (report.images && report.images.length > 0) {
       const { deleteFilesFromR2 } = await import("@/lib/r2");
       await deleteFilesFromR2(report.images);
     }
 
-    // 3. Hapus record dari Supabase
+    // Hapus record dari Supabase
     const { error: deleteError } = await supabase
       .from("reports")
       .delete()
@@ -92,7 +96,7 @@ export async function DELETE(request: Request) {
 
     if (deleteError) throw deleteError;
 
-    // --- AUDIT LOG ---
+    // Audit log
     const { AuditService } = await import("@/services/AuditService");
     await AuditService.log({
       action: "DELETE_REPORT",
@@ -109,4 +113,4 @@ export async function DELETE(request: Request) {
     console.error("Delete Report Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+});

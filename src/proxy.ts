@@ -31,8 +31,27 @@ function decodeJWTPayload(token: string): any | null {
   }
 }
 
+/** Pattern file sensitif yang harus diblokir (VULN-007/008) */
+const BLOCKED_PATTERNS = [
+  /^\/.git/,
+  /^\/.env/,
+  /^\/.htaccess/,
+  /^\/.htpasswd/,
+  /\.(zip|tar|gz|bz2|7z|rar|bak|sql|dump|old)$/i,
+  /^\/wp-(admin|login|content)/,
+  /\/phpmyadmin/i,
+  /\/xmlrpc\.php/,
+];
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // --- VULN-007/008: Block sensitive file access FIRST ---
+  for (const pattern of BLOCKED_PATTERNS) {
+    if (pattern.test(pathname)) {
+      return new NextResponse(null, { status: 404 });
+    }
+  }
 
   // --- SESSION DETECTION ---
   let session: any = null;
@@ -138,7 +157,27 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  // --- VULN-009: Inject security headers di SEMUA response ---
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload"
+  );
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(self), microphone=(), geolocation=(self), interest-cohort=()"
+  );
+  response.headers.set("X-DNS-Prefetch-Control", "off");
+
+  // Strip tech disclosure headers (VULN-003 defense in depth)
+  response.headers.delete("x-turbo-charged-by");
+  response.headers.delete("X-Powered-By");
+
+  return response;
 }
 
 export default proxy;

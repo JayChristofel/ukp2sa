@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
+import { userAdminSchema } from "@/lib/validations/apiSchemas";
 
-export async function GET(req: Request) {
+/** GET /api/admin/users — Fetch user list or single user by ID */
+const getHandler = async (req: Request) => {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(req.url);
@@ -38,7 +41,6 @@ export async function GET(req: Request) {
     const search = searchParams.get("search") || "";
     const role = searchParams.get("role") || "";
     
-    // Pagination
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
@@ -78,9 +80,10 @@ export async function GET(req: Request) {
     console.error("Users API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
 
-export async function DELETE(req: Request) {
+/** DELETE /api/admin/users — Remove user by ID */
+const deleteHandler = async (req: Request) => {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(req.url);
@@ -101,9 +104,10 @@ export async function DELETE(req: Request) {
     console.error("Delete User Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
 
-export async function PATCH(req: Request) {
+/** PATCH /api/admin/users — Update user data by ID */
+const patchHandler = async (req: Request, { body }: any) => {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(req.url);
@@ -113,7 +117,6 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
     }
 
-    const body = await req.json();
     const { name, email, role, status } = body;
 
     const { data: updatedUser, error } = await supabase
@@ -140,4 +143,9 @@ export async function PATCH(req: Request) {
     console.error("Update User Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
+
+// Semua handler dibungkus secureRoute — wajib token + role admin/presiden
+export const GET = secureRoute(getHandler);
+export const DELETE = secureRoute(deleteHandler);
+export const PATCH = secureRoute(patchHandler, { schema: userAdminSchema });

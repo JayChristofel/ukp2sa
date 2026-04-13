@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
-export async function GET() {
+/** GET /api/admin/financial/latest — Fetch latest financial payment records */
+const getHandler = async () => {
   try {
     const supabase = await createClient();
     
-    // Fetch latest 5 records that have any payment status update
     const { data: records, error } = await supabase
       .from('financial_records')
       .select('*')
@@ -19,4 +20,6 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
+
+export const GET = secureRoute(getHandler);

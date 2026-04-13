@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
-export async function GET() {
+/** GET /api/admin/roles — Fetch all roles */
+const getHandler = async () => {
   try {
     const supabase = await createClient();
     const { data: roles, error } = await supabase
@@ -25,9 +27,10 @@ export async function GET() {
     console.error("Roles API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
 
-export async function DELETE(req: Request) {
+/** DELETE /api/admin/roles — Remove role by ID */
+const deleteHandler = async (req: Request) => {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -49,9 +52,10 @@ export async function DELETE(req: Request) {
     console.error("Delete Role Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
 
-export async function POST(req: Request) {
+/** POST /api/admin/roles — Create or Update role */
+const postHandler = async (req: Request) => {
   try {
     const body = await req.json();
     const { id, name, description, permissions } = body;
@@ -80,4 +84,9 @@ export async function POST(req: Request) {
     console.error("Save Role Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
+
+// Semua handler admin roles wajib token valid
+export const GET = secureRoute(getHandler);
+export const DELETE = secureRoute(deleteHandler);
+export const POST = secureRoute(postHandler);

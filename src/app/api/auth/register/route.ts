@@ -1,11 +1,34 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import bcrypt from "bcryptjs";
+import { rateLimit } from "@/lib/rate-limit";
 
 /** POST /api/auth/register — Registrasi user baru */
 export async function POST(request: Request) {
   try {
-    const { name, email, password, lang = "id" } = await request.json();
+    // Rate limiting: max 3 register per 15 menit per IP
+    const xff = request.headers.get("x-forwarded-for");
+    const cfIp = request.headers.get("cf-connecting-ip");
+    const ip = cfIp || (xff ? xff.split(",")[0].trim() : "127.0.0.1");
+
+    const rl = await rateLimit(ip, 3, 15 * 60 * 1000);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan. Coba lagi dalam 15 menit." },
+        { status: 429, headers: { "Retry-After": "900" } }
+      );
+    }
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Format permintaan tidak valid." },
+        { status: 400 }
+      );
+    }
+
+    const { name, email, password, lang = "id" } = body;
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -52,6 +75,6 @@ export async function POST(request: Request) {
     }, { status: 201 });
   } catch (err: any) {
     console.error("⛔ [Register Error]:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Terjadi kesalahan. Silakan coba lagi." }, { status: 500 });
   }
 }

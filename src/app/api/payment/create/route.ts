@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import midtransClient from "midtrans-client";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
 // Initialize Midtrans Snap client
 const snap = new midtransClient.Snap({
@@ -9,7 +10,8 @@ const snap = new midtransClient.Snap({
   clientKey: process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY,
 });
 
-export async function POST(request: Request) {
+/** POST /api/payment/create — Create Midtrans payment transaction (protected) */
+const postHandler = async (request: Request) => {
   try {
     const supabase = await createClient();
     const body = await request.json();
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
 
     const order_id = `ORDER-${Math.floor(Math.random() * 1000000)}-${Date.now()}`;
 
-    // 1. Save to our database as a draft record first in Supabase
+    // Save to Supabase as a draft record first
     const { error: dbError } = await supabase
       .from('financial_records')
       .insert([
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
 
     if (dbError) throw dbError;
 
-    // 2. Build Midtrans transaction details
+    // Build Midtrans transaction details
     const parameter = {
       transaction_details: {
         order_id: order_id,
@@ -77,7 +79,6 @@ export async function POST(request: Request) {
     console.error("Payment API Error Detail:");
     console.error("- Message:", error.message);
     
-    // Check for specific Midtrans errors
     if (error.ApiResponse) {
       console.error("- Midtrans Response:", error.ApiResponse);
     }
@@ -90,4 +91,6 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+};
+
+export const POST = secureRoute(postHandler);

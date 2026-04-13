@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
-export async function GET() {
+/** GET /api/portal/stats — Dashboard stats untuk portal mitra (protected) */
+const getHandler = async () => {
   try {
     const supabase = await createClient();
 
-    // 1. Fetch Reports Stats (by status)
+    // Fetch Reports Stats (by status)
     const { data: reportRows, error: reportError } = await supabase
       .from('reports')
       .select('status');
@@ -17,7 +19,7 @@ export async function GET() {
       return acc;
     }, {} as Record<string, number>);
 
-    // 2. Fetch Financial Stats (grouped by program_name)
+    // Fetch Financial Stats (grouped by program_name)
     const { data: financialRows, error: financialError } = await supabase
       .from('financial_records')
       .select('program_name, allocation, realization, percentage, instansi_id');
@@ -67,4 +69,6 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json({ status: "error", message: error.message }, { status: 500 });
   }
-}
+};
+
+export const GET = secureRoute(getHandler);

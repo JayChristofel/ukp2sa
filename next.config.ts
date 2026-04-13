@@ -93,6 +93,18 @@ const nextConfig: NextConfig = {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization, X-Requested-With',
           },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(), geolocation=(self), interest-cohort=()',
+          },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'off',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          },
         ],
       },
     ];

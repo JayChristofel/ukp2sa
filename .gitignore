@@ -12,8 +12,24 @@ build/
 .env.production
 .env.staging
 
-# ZIP Archives (Gak perlu di repo)
+# Archives & Backups (VULN-007 prevention)
 *.zip
+*.tar
+*.tar.gz
+*.bz2
+*.7z
+*.rar
+*.bak
+*.sql.dump
+
+# Legacy Backups
+docs/legacy-*
+docs/*.zip
+
+# FTP/SSH Config (credentials!)
+*.coreftp
+*.duck
+*.ppk
 
 # OS Generated Files
 .DS_Store
@@ -31,7 +47,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Capacitor (Mobile Build)
+# Capacitor (Mobile Build - generated)
 android/app/build/
 ios/App/Pods/
 
