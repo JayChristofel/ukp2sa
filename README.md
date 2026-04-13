@@ -67,8 +67,6 @@
 | **Cloudflare R2** | Object storage (foto bukti laporan) |
 | **Midtrans** | Payment gateway donasi |
 | **Nodemailer** | Email transaksional (SMTP) |
-| **Banjir Sumatera API** | Data bencana real-time |
-| **Tilikan/Diswatch API** | Data intelijen penanggulangan |
 | **Capacitor** | Native mobile build (Android/iOS) |
 
 ---
