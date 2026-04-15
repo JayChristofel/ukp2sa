@@ -55,4 +55,4 @@ ios/App/Pods/
 *.tsbuildinfo
 
 # Misc
-*.log
+*.log".env" 
