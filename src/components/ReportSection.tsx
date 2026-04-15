@@ -65,7 +65,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import {
@@ -213,7 +221,7 @@ const ReportSection: React.FC = () => {
     reports: unifiedReports,
     topics,
     isLoading: unifiedLoading,
-  } = useUnifiedReports(100, lang);
+  } = useUnifiedReports(250, lang);
 
   // --- API Fetches (Dynamic) ---
   const [qSpecialQuestions, qTopTopics] = useQueries({
@@ -402,6 +410,26 @@ const ReportSection: React.FC = () => {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
+
+  const totalPages = Math.ceil(filteredReports.length / ITEMS_PER_PAGE);
+
+  const renderPaginationItems = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, "ellipsis", totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, "ellipsis", totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, "ellipsis", currentPage - 1, currentPage, currentPage + 1, "ellipsis", totalPages);
+      }
+    }
+    return pages;
+  };
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -940,6 +968,114 @@ const ReportSection: React.FC = () => {
             </AnimatePresence>
           </div>
         )}
+
+        <AnimatePresence mode="wait">
+          {totalPages > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="mt-20 flex flex-col items-center gap-8 w-full"
+            >
+              <Pagination className="w-full overflow-x-auto pb-4 sm:pb-0">
+                <PaginationContent className="gap-1 sm:gap-4 px-4 sm:px-0">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#laporan"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) setCurrentPage(currentPage - 1);
+                      }}
+                      className={cn(
+                        "rounded-xl sm:rounded-2xl h-10 sm:h-12 border-slate-200 dark:border-slate-800 hover:bg-primary-500 hover:text-white transition-all font-bold group",
+                        currentPage === 1 && "pointer-events-none opacity-30"
+                      )}
+                    >
+                      <ChevronRight className="rotate-180" size={16} />
+                      <span className="hidden md:block uppercase tracking-widest text-[10px]">
+                        {dict.common?.prev || "Sebelumnya"}
+                      </span>
+                    </PaginationPrevious>
+                  </PaginationItem>
+
+                  <div className="flex items-center gap-1 sm:gap-2 mx-2">
+                    {renderPaginationItems().map((page, idx) => (
+                      <PaginationItem key={idx}>
+                        {page === "ellipsis" ? (
+                          <PaginationEllipsis className="text-slate-400 scale-75 sm:scale-100" />
+                        ) : (
+                          <PaginationLink
+                            href="#laporan"
+                            isActive={currentPage === page}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(Number(page));
+                            }}
+                            className={cn(
+                              "rounded-xl sm:rounded-2xl h-10 w-10 sm:h-12 sm:w-12 border-slate-200 dark:border-slate-800 font-bold transition-all text-sm sm:text-base",
+                              currentPage === page
+                                ? "bg-primary-500 border-primary-500 text-white shadow-glow translate-y-[-2px] sm:translate-y-[-4px]"
+                                : "hover:bg-primary-500/10 hover:border-primary-500/50"
+                            )}
+                          >
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                  </div>
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#laporan"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+                      }}
+                      className={cn(
+                        "rounded-xl sm:rounded-2xl h-10 sm:h-12 border-slate-200 dark:border-slate-800 hover:bg-primary-500 hover:text-white transition-all font-bold group",
+                        currentPage === totalPages && "pointer-events-none opacity-30"
+                      )}
+                    >
+                      <span className="hidden md:block uppercase tracking-widest text-[10px]">
+                        {dict.common?.next || "Selanjutnya"}
+                      </span>
+                      <ChevronRight size={16} />
+                    </PaginationNext>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+              
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-3 px-6 py-2.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-full border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-md">
+                   <div className="flex items-center gap-1">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        {lang === "en" ? "Page" : "Halaman"}
+                      </span>
+                      <span className="text-xs font-black text-primary-500">
+                        {currentPage}
+                      </span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        {lang === "en" ? "of" : "dari"} {totalPages}
+                      </span>
+                   </div>
+                   <div className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
+                   <div className="flex items-center gap-1">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        Total
+                      </span>
+                      <span className="text-xs font-black text-navy dark:text-white">
+                        {filteredReports.length}
+                      </span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                        {lang === "en" ? "Reports" : "Laporan"}
+                      </span>
+                   </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.section>
 
       {/* Report Detail Modal */}

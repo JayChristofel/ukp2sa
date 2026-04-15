@@ -31,11 +31,18 @@ const nextConfig: NextConfig = {
       "clsx",
       "tailwind-merge",
       "axios",
-      "zod"
+      "zod",
+      "react-hook-form",
+      "@supabase/supabase-js",
+      "zustand",
+      "react-leaflet",
+      "leaflet",
+      "sonner",
+      "next-themes"
     ],
-    // Next.js 15+ flag to reduce max memory usage
+    // Next.js 16+ flag to reduce max memory usage during build
     webpackMemoryOptimizations: true,
-    // Run webpack compilation in a separate worker
+    // Run webpack compilation in a separate worker thread
     webpackBuildWorker: true,
   },
   
