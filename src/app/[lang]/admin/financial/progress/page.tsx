@@ -111,41 +111,42 @@ function FinancialProgressContent() {
     clearingHouseData
       .filter((col: any) => col.sector !== "NGO / Kemanusiaan")
       .forEach((ch: any) => {
-        const alloc = ch.budget || 500000000;
-        const progress = ch.confidence || 50;
+        const alloc = Number(ch.budget || 0);
+        const progress = Number(ch.confidence || 0);
         const realz = (alloc * progress) / 100;
 
         arr.push({
           id: `PBG-${idCount++}`,
-          source: ch.fundingScheme?.includes("APBN") ? "APBN" : "APBD",
-          programName: ch.title,
+          source: (ch.fundingScheme || "").includes("APBN") ? "APBN" : "APBD",
+          programName: ch.title || "Program Strategis",
           allocation: alloc,
           realization: realz,
           percentage: progress,
-          lastUpdate: stableDate,
+          lastUpdate: ch.updated_at || stableDate,
           disbursementStage: getStage(progress),
         });
       });
 
-    ngoData.slice(0, 50).forEach((ngo: any) => {
-      const alloc = ngo.interventionEstimatedValueIdr || 0;
+    ngoData.forEach((ngo: any) => {
+      const alloc = Number(ngo.interventionEstimatedValueIdr || ngo.budget || 0);
       if (alloc === 0) return;
 
-      const progress = 45 + (idCount % 35); // Deterministic
+      const progress = Number(ngo.progress || 0); 
       const realz = (alloc * progress) / 100;
-      const orgName = ngo.parentOrganization?.[0]?.name || "NGO Internasional";
+      const orgName = ngo.parentOrganization?.[0]?.name || ngo.org_name || "NGO Associate";
 
       arr.push({
         id: `NGO-${idCount++}`,
         source: "NGO/Donor",
         programName: `${orgName}: ${
           ngo.interventionActivityDescription?.slice(0, 50) ||
+          ngo.title ||
           "Intervensi Kemanusiaan"
         }`,
         allocation: alloc,
         realization: realz,
         percentage: progress,
-        lastUpdate: stableDate,
+        lastUpdate: ngo.updated_at || stableDate,
         disbursementStage: getStage(progress),
       });
     });

@@ -86,7 +86,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://diswatchapi.tilikan.id https://superdashapi.tilikan.id https://api.banjirsumatra.id https://www.google-analytics.com; frame-ancestors 'none'; object-src 'none';",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.google-analytics.com https://static.cloudflareinsights.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://diswatchapi.tilikan.id https://superdashapi.tilikan.id https://api.banjirsumatra.id https://www.google-analytics.com https://static.cloudflareinsights.com; frame-ancestors 'none'; object-src 'none';",
           },
           {
             key: 'Access-Control-Allow-Origin',

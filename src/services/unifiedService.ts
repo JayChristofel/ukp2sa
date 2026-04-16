@@ -39,35 +39,41 @@ const ensureArray = (res: unknown): any[] => {
   return [];
 };
 
-// Limit per page — 100 is safer for stability and memory
-const PAGE_LIMIT = 100;
+// Limit per page — Increased for full dashboard coverage
+const PAGE_LIMIT = 500;
 
 export const apiService = {
   // --- BANJIR SUMATRA ENDPOINTS ---
 
   getMissingPersons: async (page = 1) => {
     try {
-      // 🛡️ LOCAL-FIRST: SAR category reports are mirrored missing persons
       const { createClient } = await import("@/lib/client");
       const supabase = createClient();
-      const { data: localData } = await supabase
-        .from('reports')
-        .select('*')
-        .eq('category', 'Bencana Banjir') // Usually mirrored under this category in SyncManager
-        .order('created_at', { ascending: false })
-        .limit(PAGE_LIMIT);
+      
+      const [localRes, externalRes] = await Promise.allSettled([
+        supabase.from('reports').select('*').eq('category', 'Bencana Banjir').limit(PAGE_LIMIT),
+        banjirApi.get(`/missing-person`, { params: { page, limit: PAGE_LIMIT } })
+      ]);
 
-      if (localData && localData.length > 0) return localData;
+      let combined = [];
+      if (localRes.status === 'fulfilled' && localRes.value.data) {
+        combined = [...localRes.value.data];
+      }
 
-      const { data } = await (banjirApi.get(`/missing-person`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      const items = ensureArray(data);
-      return items.map((item) => ({
-        ...item,
-        missingPersonDetails: safeParse(item.missingPersonDetails),
-        missingConditionDetails: safeParse(item.missingConditionDetails),
-      }));
+      if (externalRes.status === 'fulfilled') {
+        const items = ensureArray((externalRes.value as any).data);
+        const localIds = new Set(combined.map(r => String(r.id)));
+        const filteredApi = items.filter(r => !localIds.has(String(r.id)));
+        const externalItems = filteredApi.map((item) => ({
+          ...item,
+          missingPersonDetails: safeParse(item.missingPersonDetails),
+          missingConditionDetails: safeParse(item.missingConditionDetails),
+          isExternal: true
+        }));
+        combined = [...combined, ...externalItems];
+      }
+
+      return combined;
     } catch {
       return [];
     }
@@ -148,7 +154,14 @@ export const apiService = {
       const { data } = await (banjirApi.get(`/general-facilities`, {
         params: { page, limit: PAGE_LIMIT },
       }) as any);
-      return ensureArray(data);
+      const items = ensureArray(data);
+      // Auto-tag facilities for better KPI categorization
+      return items.map(f => ({
+        ...f,
+        isSchool: (f.name || "").match(/SD|SMP|SMA|SMK|Sekolah|Universitas|Dayah/i),
+        isHealth: (f.name || "").match(/Klinik|Puskesmas|RSUD|Rumah Sakit|Apotek/i),
+        isDAS: (f.name || "").match(/DAS|Sungai|Krueng|Drainase|Bendungan/i)
+      }));
     } catch {
       return [];
     }
@@ -171,10 +184,17 @@ export const apiService = {
         params: { page, limit: PAGE_LIMIT },
       }) as any);
       const items = ensureArray(data);
-      return items.map((item) => ({
-        ...item,
-        censusDetail: safeParse(item.censusDetail),
-      }));
+      return items.map((item) => {
+        const census = safeParse(item.censusDetail) || {};
+        return {
+          ...item,
+          censusDetail: census,
+          // Standardize fields aggressively for Rice Field (Sawah), DAS, etc.
+          recoveredArea: Number(census.recoveredArea || census.luas_pulih || item.recoveredArea || item.total_recovered || item.sawah_pulih || item.luas_sawah || 0),
+          population: Number(census.population || item.population || item.jumlah_penduduk || 0),
+          dasProgress: Number(census.dasProgress || census.progres_das || item.dasProgress || item.das_restoration || item.progres_sungai || 0)
+        };
+      });
     } catch {
       return [];
     }
@@ -182,10 +202,33 @@ export const apiService = {
 
   getRegencyFundAllocation: async (page = 1) => {
     try {
-      const { data } = await (banjirApi.get(`/regency-fund-allocation`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+
+      const [externalRes, localRes] = await Promise.allSettled([
+        banjirApi.get(`/regency-fund-allocation`, { params: { page, limit: PAGE_LIMIT } }),
+        supabase.from('financial_records').select('*').limit(PAGE_LIMIT)
+      ]);
+
+      let combined: any[] = [];
+      
+      const mapFin = (item: any) => ({
+        ...item,
+        realization: Number(item.realization || item.realisasi || item.amount || item.amount_realization || item.total_dana || item.realization_total || 0),
+        percentage: Number(item.percentage || item.persentase || item.progress || item.penyerapan || item.absorption || 0),
+        programName: item.programName || item.program_name || item.kabupatenKota || item.kabupaten_kota || item.kabupaten || "Program Strategis Daerah"
+      });
+
+      if (localRes.status === 'fulfilled' && localRes.value.data) {
+        combined = [...localRes.value.data.map(mapFin)];
+      }
+
+      if (externalRes.status === 'fulfilled') {
+        const apiItems = ensureArray((externalRes.value as any).data);
+        combined = [...combined, ...apiItems.map(mapFin)];
+      }
+
+      return combined;
     } catch {
       return [];
     }
@@ -195,25 +238,27 @@ export const apiService = {
 
   getReportAnswers: async (limit = 100) => {
     try {
-      // 🛡️ LOCAL-FIRST: Fetch from our own database (Synced via SyncManager)
-      // This avoids CORS and Network Errors in production
       const { createClient } = await import("@/lib/client");
       const supabase = createClient();
-      const { data: localData } = await supabase
-        .from('reports')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
 
-      if (localData && localData.length > 0) {
-        return localData;
+      const [localRes, apiRes] = await Promise.allSettled([
+        supabase.from('reports').select('*').order('created_at', { ascending: false }).limit(limit),
+        tilikanApi.get(`/tanggapi/answers`, { params: { limit } })
+      ]);
+
+      let combined: any[] = [];
+      if (localRes.status === 'fulfilled' && localRes.value.data) {
+        combined = [...localRes.value.data];
       }
 
-      // Fallback only if local database is empty
-      const { data } = await (tilikanApi.get(`/tanggapi/answers`, {
-        params: { limit },
-      }) as any);
-      return ensureArray(data);
+      if (apiRes.status === 'fulfilled') {
+        const apiItems = ensureArray((apiRes.value as any).data);
+        const localIds = new Set(combined.map(r => String(r.id)));
+        const filteredApi = apiItems.filter(r => !localIds.has(String(r.id)));
+        combined = [...combined, ...filteredApi];
+      }
+
+      return combined;
     } catch {
       return [];
     }
@@ -288,7 +333,7 @@ export const apiService = {
     try {
       const { data } = await (tilikanApi.get(`/tanggapi/answers/${id}`) as any);
       return data;
-    } catch {
+    } catch (e) {
       return null;
     }
   },
@@ -338,26 +383,24 @@ export const apiService = {
       const res = await fetch(`/api/admin/users?${params}`);
       if (!res.ok) return { data: [], total: 0 };
       return res.json();
-    } catch {
+    } catch (e) {
       return { data: [], total: 0 };
     }
   },
-
   deleteUser: async (id: string) => {
     try {
       const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
       return res.json();
-    } catch {
+    } catch (e) {
       return { error: "Network error" };
     }
   },
-
   getRoles: async () => {
     try {
       const res = await fetch(`/api/admin/roles`);
       if (!res.ok) return [];
       return res.json();
-    } catch {
+    } catch (e) {
       return [];
     }
   },
@@ -485,60 +528,131 @@ export const apiService = {
       ]);
 
       const items: any[] = [];
-      let idCounter = 1;
+      const registry: any[] = [];
 
-      if (allocations && allocations.length > 0) {
-        allocations.slice(0, 10).forEach((al: any) => {
-          items.push({
-            id: `ALC-${idCounter++}`,
-            title: `Alokasi Dana ${al.kabupatenKota || "Daerah"}`,
-            sector: "Anggaran Dasar",
-            status: "synced",
-            agency: "Kementerian Keuangan RI",
-            budget: 5000000000,
-            location: al.kabupatenKota,
-          });
-        });
-      }
+      // Smart Conflict Detection v2
+      const analyzeConflict = (title: string, location: string, sector: string, budget: number, agency: string) => {
+        const normalizedTitle = (title || "").toLowerCase().trim();
+        const normalizedLoc = (location || "").toLowerCase().trim();
 
-      if (posko && posko.length > 0) {
-        posko.slice(0, 5).forEach((p: any) => {
-          items.push({
-            id: `PSK-${idCounter++}`,
-            title: `Posko: ${p.namaPosko}`,
-            sector: "Sosial & Logistik",
-            status: "synced",
-            agency: "BPBD",
-            location: p.kecamatan,
-          });
+        // Check against existing registry
+        const conflict = registry.find(item => {
+          const titleMatch = item.title === normalizedTitle;
+          const locMatch = item.location === normalizedLoc;
+          const budgetMatch = item.budget === budget;
+          const sectorMatch = item.sector === sector.toLowerCase();
+          
+          return (titleMatch && locMatch) || (locMatch && budgetMatch && sectorMatch);
         });
-      }
-      
-      if (facilities && facilities.length > 0) {
-        facilities.slice(0, 5).forEach((f: any) => {
-          items.push({
-            id: `FAC-${idCounter++}`,
-            title: f.namaFasilitas,
-            sector: "Infrastruktur",
-            status: "synced",
-            agency: "PUPR",
-            location: f.kecamatan,
-          });
-        });
-      }
 
-      if (ngoData && ngoData.length > 0) {
-        ngoData.slice(0, 5).forEach((ngo: any) => {
-          items.push({
-            id: `NGO-${idCounter++}`,
-            title: `Intervensi: ${ngo.interventionActivityDescription?.slice(0, 50)}`,
-            sector: "NGO",
-            status: "synced",
-            agency: ngo.parentOrganization?.[0]?.name,
-            location: ngo.regency?.[0],
-          });
+        if (conflict) {
+          // If title and location match exactly = INVALID DUPLICATE (Data Error)
+          if (conflict.title === normalizedTitle && conflict.agency === agency) {
+            return { status: "duplicate", confidence: 99, reason: "Identical record detected from same source." };
+          }
+          // If location and budget match but title/agency different = POTENTIAL OVERLAP (Valid but Warning)
+          return { status: "overlap", confidence: 75, reason: "Budget overlap detected in same cluster." };
+        }
+
+        registry.push({ title: normalizedTitle, location: normalizedLoc, budget, agency, sector: sector.toLowerCase() });
+        return { status: "synced", confidence: 100, reason: "Clean record." };
+      };
+
+      // 1. Allocations (Core Budget)
+      allocations.forEach((al: any, idx: number) => {
+        const loc = al.kabupatenKota || al.kabupaten_kota || al.kabupaten || "Aceh";
+        const sec = "Anggaran";
+        const bud = Number(al.amount_realization || al.realisasi || al.budget || al.total_dana || 0);
+        const agn = al.agency || al.instansi || "Kementerian Keuangan RI";
+        const conflict = analyzeConflict(al.programName || al.kabupatenKota, loc, sec, bud, agn);
+        
+        items.push({
+          id: `ALC-${idx}`,
+          code: al.code || `BUD-${idx}-${loc.slice(0, 3).toUpperCase()}`,
+          title: al.programName || `Alokasi Dana ${loc}`,
+          sector: "Anggaran Dasar",
+          status: conflict.status,
+          confidence: conflict.confidence,
+          reason: conflict.reason,
+          agency: agn,
+          budget: bud,
+          location: loc,
+          fundingScheme: al.fundingScheme || al.funding_scheme || "APBN / APBA",
+          outcome: al.outcome || `Optimalisasi dana untuk wilayah ${loc} sesuai usulan tahun anggaran berjalan.`,
         });
-      }
+      });
+
+      // 2. Posko (Logistics)
+      posko.forEach((p: any, idx: number) => {
+        const loc = p.kecamatan || p.kabupaten || "Aceh";
+        const sec = "Logistik";
+        const bud = Number(p.budget || p.estimated_cost || 0);
+        const agn = p.instansi || p.agency || "BPBD / Dinas Sosial";
+        const conflict = analyzeConflict(p.namaPosko, loc, sec, bud, agn);
+
+        items.push({
+          id: `PSK-${idx}`,
+          code: p.kodePosko || `LOG-${idx}-${loc.slice(0, 3).toUpperCase()}`,
+          title: `Posko: ${p.namaPosko}`,
+          sector: "Sosial & Logistik",
+          status: conflict.status,
+          confidence: conflict.confidence,
+          reason: conflict.reason,
+          agency: agn,
+          budget: bud,
+          location: loc,
+          fundingScheme: p.funding_source || "Dana Hibah / Darurat",
+          outcome: p.service_description || `Penyediaan logistik darurat dan titik kumpul di wilayah ${loc}.`,
+        });
+      });
+
+      // 3. Facilities (Infrastructure)
+      facilities.forEach((f: any, idx: number) => {
+        const loc = f.kecamatan || f.kabupaten || "Aceh";
+        const sec = "Infrastruktur";
+        const bud = Number(f.budget || f.rehab_cost || 0);
+        const agn = f.agency || f.manager || "Dinas PUPR / Perkim";
+        const conflict = analyzeConflict(f.namaFasilitas, loc, sec, bud, agn);
+
+        items.push({
+          id: `FAC-${idx}`,
+          code: f.id || f.code || `INF-${idx}-${loc.slice(0, 3).toUpperCase()}`,
+          title: f.namaFasilitas || "Fasilitas Publik",
+          sector: "Infrastruktur",
+          status: conflict.status,
+          confidence: conflict.confidence,
+          reason: conflict.reason,
+          agency: agn,
+          budget: bud,
+          location: loc,
+          fundingScheme: f.funding || "DANA DESA / APBK",
+          outcome: f.description || `Perbaikan dan pemeliharaan fasilitas ${f.namaFasilitas} untuk masyarakat ${loc}.`,
+        });
+      });
+
+      // 4. NGO (Interventions)
+      ngoData.forEach((ngo: any, idx: number) => {
+        const loc = ngo.regency?.[0] || "Aceh";
+        const sec = "Bantuan Luar";
+        const bud = ngo.total_population_assisted || 100000000;
+        const agn = ngo.parentOrganization?.[0]?.name || "NGO Partner";
+        const conflict = analyzeConflict(ngo.NGO_Name, loc, sec, bud, agn);
+
+        items.push({
+          id: `NGO-${idx}`,
+          code: `INTV-${idx}-${loc.slice(0, 3).toUpperCase()}`,
+          title: `Intervensi: ${ngo.interventionActivityDescription?.slice(0, 50)}...`,
+          sector: "NGO / Kemitraan",
+          status: conflict.status,
+          confidence: conflict.confidence,
+          reason: conflict.reason,
+          agency: agn,
+          budget: bud,
+          location: loc,
+          fundingScheme: "International Grant",
+          outcome: `Bantuan teknis dan distribusi logistik sasar masyarakat di ${loc}.`,
+        });
+      });
 
       return items;
     } catch {
@@ -548,42 +662,128 @@ export const apiService = {
 
   getAssignmentsData: async () => {
     try {
-      const [missing, posko, reports] = await Promise.all([
+      // 🚀 REAL-TIME AGGREGATION
+      const [missing, posko, reports, ngo, police, genFac, pubFac] = await Promise.all([
         apiService.getMissingPersons(1).catch(() => []),
         apiService.getPosko(1).catch(() => []),
-        apiService.getReportAnswers(10).catch(() => []),
+        apiService.getReportAnswers(30).catch(() => []),
+        apiService.getNgo(1).catch(() => []),
+        apiService.getPoliceOffices(1).catch(() => []),
+        apiService.getGeneralFacilities(1).catch(() => []),
+        apiService.getPublicFacilities(1).catch(() => []),
       ]);
 
       const tasks: any[] = [];
-      
-      missing.slice(0, 5).forEach((p: any) => {
+      const now = new Date().toISOString();
+
+      const mapProgressFromStatus = (status: string, apiProgress?: number) => {
+        if (typeof apiProgress === 'number' && apiProgress > 0) return apiProgress;
+        const s = (status || "").toLowerCase();
+        if (["verified", "completed", "selesai", "resolved", "aman", "guarded"].includes(s)) return 100;
+        if (["proses", "inspection", "sedang berjalan", "active"].includes(s)) return 50;
+        if (["assigned", "terjadwal", "pending"].includes(s)) return 25;
+        return 10;
+      };
+
+      // 1. SAR / Missing Persons
+      missing.forEach((p: any, idx: number) => {
+        const s = p.status || p.condition || "Searching";
         tasks.push({
-          id: `TSK-SAR-${p.id}`,
-          title: `Verifikasi: ${p.name}`,
-          status: "Assigned",
+          id: `TSK-SAR-${p.id || p._id || idx}-${idx}`,
+          title: `SAR: ${p.name || "Identitas Unknown"}`,
+          status: s,
+          progress: mapProgressFromStatus(s, p.progress || p.percentage),
           category: "SAR",
+          assignee: "Unit SAR Aceh",
+          createdAt: p.created_at || p.createdAt || now,
         });
       });
 
-      posko.slice(0, 5).forEach((p: any) => {
+      // 2. Logistics / Posko
+      posko.forEach((p: any, idx: number) => {
+        const s = p.status || p.condition || "Operational";
         tasks.push({
-          id: `TSK-LOG-${p.id}`,
-          title: `Supervisi: ${p.namaPosko}`,
-          status: "Pending",
+          id: `TSK-LOG-${p.id || p._id || idx}-${idx}`,
+          title: `Logistik: ${p.namaPosko}`,
+          status: s,
+          progress: mapProgressFromStatus(s, p.progress || p.percentage || p.realization),
           category: "Logistik",
+          assignee: p.contactName || "BPBD / Dinas Sosial",
+          createdAt: p.created_at || p.createdAt || now,
         });
       });
 
-      reports.slice(0, 5).forEach((r: any) => {
+      // 3. Citizen Reports
+      reports.forEach((r: any, idx: number) => {
+        const s = r.status || r.current_status || "Pending";
         tasks.push({
-          id: `TSK-REP-${r.id}`,
-          title: `Follow-up: ${r.subject || "Laporan Warga"}`,
-          status: "Pending",
-          category: "Laporan",
+          id: `TSK-REP-${r.id || r._id || idx}-${idx}`,
+          title: `Laporan: ${r.subject || r.category || "Verifikasi Lapangan"}`,
+          status: s,
+          progress: mapProgressFromStatus(s, r.progress || r.percentage),
+          category: "Masyarakat",
+          assignee: r.assignee || "Pusat Komando",
+          createdAt: r.created_at || r.createdAt || now,
         });
       });
 
-      return tasks;
+      // 4. NGO / Intv
+      ngo.forEach((n: any, idx: number) => {
+        const s = n.status || n.interventionStatus || "Active";
+        tasks.push({
+          id: `TSK-NGO-${n.id || n._id || idx}-${idx}`,
+          title: `NGO: ${n.interventionActivityDescription?.slice(0, 50) || "Intervensi Bantuan"}...`,
+          status: s,
+          progress: mapProgressFromStatus(s, n.progress || n.percentage || n.realization),
+          category: "Kemitraan",
+          assignee: n.parentOrganization?.[0]?.name || "NGO Partner",
+          createdAt: n.created_at || n.createdAt || now,
+        });
+      });
+
+      // 5. General Facilities
+      genFac.forEach((f: any, idx: number) => {
+        const s = f.status || f.kondisi || "Functional";
+        tasks.push({
+          id: `TSK-GFAC-${f.id || f._id || idx}-${idx}`,
+          title: `Fasilitas: ${f.namaFasilitas || f.nama || "Fasilitas Umum"}`,
+          status: s,
+          progress: mapProgressFromStatus(s, f.progress || f.percentage),
+          category: "Infrastruktur",
+          assignee: f.manager || "Dinas PUPR",
+          createdAt: f.created_at || f.createdAt || now,
+        });
+      });
+
+      // 6. Public Facilities
+      pubFac.forEach((f: any, idx: number) => {
+        const s = f.status || f.kondisi || "Functional";
+        tasks.push({
+          id: `TSK-PFAC-${f.id || f._id || idx}-${idx}`,
+          title: `Publik: ${f.namaFasilitas || f.nama || "Fasilitas Publik"}`,
+          status: s,
+          progress: mapProgressFromStatus(s, f.progress || f.percentage),
+          category: "Infrastruktur",
+          assignee: f.manager || "Dinas PUPR",
+          createdAt: f.created_at || f.createdAt || now,
+        });
+      });
+
+      // 7. Security / Police
+      police.forEach((p: any, idx: number) => {
+        const s = p.status || "Guarded";
+        tasks.push({
+          id: `TSK-SEC-${p.id || p._id || idx}-${idx}`,
+          title: `Keamanan: ${p.namaPolsek || "Pos Polisi"}`,
+          status: s,
+          progress: mapProgressFromStatus(s, p.progress),
+          category: "Keamanan",
+          assignee: "POLRI",
+          createdAt: p.created_at || p.createdAt || now,
+        });
+      });
+
+      return tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch {
       return [];
     }

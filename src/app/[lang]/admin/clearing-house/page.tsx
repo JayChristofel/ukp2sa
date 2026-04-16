@@ -217,6 +217,20 @@ export default function ClearingHousePage() {
                 >
                   {d.status_duplicate || "DUPLIKASI"}
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={statusFilter.includes("overlap")}
+                  onCheckedChange={(checked) => {
+                    setStatusFilter((prev) =>
+                      checked
+                        ? [...prev, "overlap"]
+                        : prev.filter((s) => s !== "overlap"),
+                    );
+                    setCurrentPage(1);
+                  }}
+                  className="text-[11px] font-bold uppercase rounded-xl"
+                >
+                  {d.status_overlap || "TUMPANG TINDIH"}
+                </DropdownMenuCheckboxItem>
 
                 <DropdownMenuSeparator className="my-2" />
 
@@ -460,11 +474,18 @@ export default function ClearingHousePage() {
                         <div className="flex items-center gap-1.5 text-emerald-500 font-black uppercase text-[9px] tracking-widest">
                           <CheckCircle2 size={12} /> {ach.conflict_resolved}
                         </div>
+                      ) : item.status === "overlap" ? (
+                        <div className="flex items-center gap-1.5 text-amber-500 font-black uppercase text-[9px] tracking-widest">
+                          <Layers size={12} /> {d.status_overlap || "OVERLAP"}
+                        </div>
                       ) : (
                         <div className="flex items-center gap-1.5 text-rose-500 font-black uppercase text-[9px] tracking-widest">
                           <AlertTriangle size={12} /> {ach.duplicate_warning}
                         </div>
                       )}
+                      <div className="text-[8px] font-bold text-slate-400 mt-1 uppercase truncate max-w-[120px]">
+                        {item.reason}
+                      </div>
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-3">
@@ -502,6 +523,8 @@ export default function ClearingHousePage() {
                             className={`h-2 w-full shrink-0 ${
                               item.status === "synced"
                                 ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                                : item.status === "overlap"
+                                ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
                                 : "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]"
                             }`}
                           />
@@ -512,11 +535,15 @@ export default function ClearingHousePage() {
                                   className={`rounded-lg font-black uppercase text-[9px] tracking-widest border-none px-3 py-1 ${
                                     item.status === "synced"
                                       ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                                      : item.status === "overlap"
+                                      ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
                                       : "bg-rose-500 text-white shadow-lg shadow-rose-500/20"
                                   }`}
                                 >
                                   {item.status === "synced"
                                     ? ach.conflict_resolved
+                                    : item.status === "overlap"
+                                    ? d.status_overlap || "OVERLAP"
                                     : ach.duplicate_warning}
                                 </Badge>
                                 <span className="text-slate-300 dark:text-slate-700 font-bold">
@@ -624,6 +651,8 @@ export default function ClearingHousePage() {
                                     <p className="text-[11px] font-black text-navy dark:text-white uppercase truncate">
                                       {item.status === "synced"
                                         ? "ALIGNED DETECTED"
+                                        : item.status === "overlap"
+                                        ? "OVERLAP DETECTED"
                                         : "CONFLICT DETECTED"}
                                     </p>
                                   </div>
@@ -645,9 +674,7 @@ export default function ClearingHousePage() {
                                     RESOLUTION NOTES
                                   </h5>
                                   <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                                    {item.status === "synced"
-                                      ? "Clean of budget overlap. Verified with geospatial filters."
-                                      : "Potential duplication in intervention target or locus. Manual review required."}
+                                    {item.reason || "Verified record structure."}
                                   </p>
                                 </div>
                               </div>

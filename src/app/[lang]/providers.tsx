@@ -8,17 +8,14 @@ import { useAuthStore } from "@/stores/authStore";
 // Re-export auth hooks biar gak perlu ganti import di banyak file
 export { useAuth, useSession } from "@/stores/authStore";
 
-// Export hook helper with custom isDark & toggleTheme for backward compatibility
 export const useTheme = () => {
-  const { theme, setTheme, resolvedTheme } = useNextTheme();
+  const themeContext = useNextTheme();
   
-  const isDark = resolvedTheme === "dark";
-  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+  const isDark = themeContext?.resolvedTheme === "dark";
+  const toggleTheme = () => themeContext?.setTheme(isDark ? "light" : "dark");
 
   return { 
-    theme, 
-    setTheme, 
-    resolvedTheme, 
+    ...themeContext,
     isDark, 
     toggleTheme 
   };

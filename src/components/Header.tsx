@@ -11,6 +11,7 @@ import {
   Menu,
   ArrowRight,
   LogIn,
+  LogInIcon,
 } from "lucide-react";
 import { Button } from "./ui";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,17 @@ import Image from "next/image";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
 import { useI18n } from "@/app/[lang]/providers";
+import { useAuth, useAuthStore } from "@/stores/authStore";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { User, LogOut } from "lucide-react";
 
 interface HeaderProps {
   isDark: boolean;
@@ -29,6 +41,9 @@ const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
   const dict = useI18n();
   const d = dict?.nav || {};
   const common = dict?.common || {};
+  const { isAuthenticated, user } = useAuth();
+  const logout = useAuthStore((state) => state.logout);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [activeSection, setActiveSection] = React.useState("home");
   const pathname = usePathname();
@@ -258,13 +273,69 @@ const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
               }
             />
 
-            <Link
-              href={`/${lang}/auth/login`}
-              className="hidden lg:flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all hover:scale-105 active:scale-95"
-            >
-              <LayoutGrid size={16} />
-              <span>{d.dashboard}</span>
-            </Link>
+            {isAuthenticated ? (
+              <div className="hidden lg:block">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-3 p-1 pr-4 bg-white/50 dark:bg-slate-900/50 border border-white/20 dark:border-slate-800/50 rounded-2xl hover:bg-white/80 dark:hover:bg-slate-800/80 transition-all group cursor-pointer outline-none">
+                      <Avatar className="size-10 border-2 border-primary-500/20 group-hover:border-primary-500 transition-colors">
+                        <AvatarImage
+                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`}
+                        />
+                        <AvatarFallback className="bg-primary-500/10 text-primary-600 font-bold uppercase transition-colors">
+                          {user?.name?.substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col items-start min-w-0">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-navy dark:text-white truncate max-w-[100px]">
+                          {user?.name}
+                        </span>
+                        <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                          {user?.role}
+                        </span>
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-56 mt-2 p-2 rounded-2xl border-white/20 dark:border-slate-800/50 backdrop-blur-xl bg-white/90 dark:bg-slate-950/90 shadow-2xl z-[5005]"
+                  >
+                    <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                      {common.account || "Account Settings"}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-slate-200/50 dark:bg-slate-800/50" />
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/${lang}/auth/login`}
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-500/10 text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                      >
+                        <LayoutGrid size={18} />
+                        <span className="text-xs font-black uppercase tracking-widest">
+                          {d.dashboard}
+                        </span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => logout()}
+                      className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-red-50 dark:hover:bg-red-500/10 text-red-500 hover:text-red-600 transition-colors"
+                    >
+                      <LogOut size={18} />
+                      <span className="text-xs font-black uppercase tracking-widest">
+                        {common.logout || "Logout"}
+                      </span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : (
+              <Link
+                href={`/${lang}/auth/login`}
+                className="hidden lg:flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all hover:scale-105 active:scale-95"
+              >
+                <span>{d.login}</span>
+                <LogInIcon size={16} />
+              </Link>
+            )}
 
             <Button
               variant="ghost"
@@ -376,19 +447,63 @@ const Header: React.FC<HeaderProps> = ({ isDark, toggleTheme }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ delay: 0.1 }}
-              className="fixed inset-x-4 top-[calc(24rem+7.5rem)] z-[5002]" // Adjusting based on approximate menu height
+              className="fixed inset-x-4 bottom-8 z-[5002]"
             >
-              <Link
-                href={`/${lang}/auth/login`}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center justify-between text-base font-black uppercase tracking-[0.2em] transition-all p-5 rounded-[1.5rem] bg-primary-600 text-white shadow-glow border border-primary-500 hover:scale-[1.02] active:scale-95 shadow-2xl"
-              >
-                <div className="flex items-center gap-3">
-                  <LogIn size={20} />
-                  <span>{common.login || "Masuk"}</span>
+              {isAuthenticated ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-4 p-5 rounded-[2rem] bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-2xl">
+                    <Avatar className="size-14 border-2 border-primary-500 shadow-glow">
+                      <AvatarImage
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`}
+                      />
+                      <AvatarFallback className="text-lg">
+                        {user?.name?.substring(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black uppercase tracking-widest text-navy dark:text-white">
+                        {user?.name}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+                        {user?.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link
+                      href={`/${lang}/auth/login`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 p-5 rounded-[1.5rem] bg-primary-600 text-white font-black uppercase tracking-widest text-[10px] shadow-glow"
+                    >
+                      <LayoutGrid size={18} />
+                      <span>{d.dashboard}</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center justify-center gap-2 p-5 rounded-[1.5rem] bg-red-500/10 text-red-500 border border-red-500/20 font-black uppercase tracking-widest text-[10px]"
+                    >
+                      <LogOut size={18} />
+                      <span>{common.logout || "Keluar"}</span>
+                    </button>
+                  </div>
                 </div>
-                <ArrowRight size={20} />
-              </Link>
+              ) : (
+                <Link
+                  href={`/${lang}/auth/login`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-between text-base font-black uppercase tracking-[0.2em] transition-all p-5 rounded-[1.5rem] bg-primary-600 text-white shadow-glow border border-primary-500 hover:scale-[1.02] active:scale-95 shadow-2xl"
+                >
+                  <div className="flex items-center gap-3">
+                    <LogIn size={20} />
+                    <span>{common.login || "Masuk"}</span>
+                  </div>
+                  <ArrowRight size={20} />
+                </Link>
+              )}
             </motion.div>
           </>
         )}

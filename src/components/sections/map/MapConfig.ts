@@ -12,6 +12,7 @@ import {
   Construction,
   Flag,
   AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 
 export const CATEGORY_CONFIG: Record<string, { icon: any; color: string }> = {
@@ -29,6 +30,8 @@ export const CATEGORY_CONFIG: Record<string, { icon: any; color: string }> = {
   starlink: { icon: Wifi, color: "#60a5fa" }, // Blue 400
   village: { icon: Landmark, color: "#6366f1" }, // Indigo 500
   report: { icon: AlertTriangle, color: "#fb7185" }, // Rose 400
+  ngo: { icon: ShieldCheck, color: "#0ea5e9" }, // Sky 500
+  "r3p-damage": { icon: AlertTriangle, color: "#f43f5e" }, // Rose 500
 };
 
 export const SIDEBAR_GROUPS = [

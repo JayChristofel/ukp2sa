@@ -11,6 +11,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   AlertTriangle,
   Clock,
@@ -49,7 +51,7 @@ import { useAuditLogger } from "@/hooks/useAuditLogger";
 import { useNotificationStore } from "@/hooks/useNotificationStore";
 import { useEffect } from "react";
 
-type ViewMode = "grid" | "list" | "bento";
+type ViewMode = "grid" | "list";
 
 const getCategoryIcon = (cat: string) => {
   switch (cat) {
@@ -107,8 +109,10 @@ export default function AssignmentsPage() {
     );
   }, [logActivity]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("bento");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   const { data: rawTasks = [], isLoading } = useQuery({
     queryKey: ["assignmentsData"],
@@ -129,21 +133,55 @@ export default function AssignmentsPage() {
       const matchSearch =
         task.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         task.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.assignee?.toLowerCase().includes(searchTerm.toLowerCase());
+        task.assignee?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        task.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        task.id?.toLowerCase().includes(searchTerm.toLowerCase());
 
       if (activeTab === "all") return matchSearch;
       if (activeTab === "pending")
-        return matchSearch && task.status === "Pending";
+        return (
+          matchSearch &&
+          ["Pending", "Assigned", "Searching"].includes(task.status)
+        );
       if (activeTab === "active")
         return (
           matchSearch &&
-          ["Assigned", "En Route", "On Site"].includes(task.status)
+          [
+            "En Route",
+            "On Site",
+            "Active",
+            "Proses",
+            "Inspection",
+            "Operational",
+          ].includes(task.status)
         );
       if (activeTab === "resolved")
-        return matchSearch && task.status === "Resolved";
+        return (
+          matchSearch &&
+          [
+            "Resolved",
+            "Verified",
+            "Completed",
+            "Selesai",
+            "Aman",
+            "Guarded",
+          ].includes(task.status)
+        );
       return matchSearch;
     });
   }, [rawTasks, activeTab, searchTerm]);
+
+  const paginatedTasks = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredTasks.slice(start, start + itemsPerPage);
+  }, [filteredTasks, currentPage]);
+
+  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
+
+  // Auto-reset to page 1 on search or tab change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeTab]);
 
   const tabs = [
     { id: "all", label: aa.tab_all },
@@ -240,9 +278,9 @@ export default function AssignmentsPage() {
         <div className="flex items-center gap-4 w-full lg:w-auto">
           <div className="bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-1">
             <button
-              onClick={() => setViewMode("bento")}
+              onClick={() => setViewMode("grid")}
               className={`p-2 rounded-xl transition-all ${
-                viewMode === "bento"
+                viewMode === "grid"
                   ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105"
                   : "text-slate-400 hover:text-navy dark:hover:text-white"
               }`}
@@ -335,7 +373,7 @@ export default function AssignmentsPage() {
                   exit={{ opacity: 0 }}
                   className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                 >
-                  {filteredTasks.map((task: any) => (
+                  {paginatedTasks.map((task: any) => (
                     <TaskCard
                       key={task.id}
                       task={task}
@@ -355,7 +393,7 @@ export default function AssignmentsPage() {
                   exit={{ opacity: 0 }}
                   className="space-y-4"
                 >
-                  {filteredTasks.map((task: any) => (
+                  {paginatedTasks.map((task: any) => (
                     <TaskListRow
                       key={task.id}
                       task={task}
@@ -366,38 +404,88 @@ export default function AssignmentsPage() {
                   ))}
                 </motion.div>
               )}
-              {viewMode === "bento" && (
-                <motion.div
-                  key="bento"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="grid grid-cols-1 md:grid-cols-4 gap-6"
-                >
-                  {filteredTasks.map((task: any, idx: number) => (
-                    <div
-                      key={task.id}
-                      className={
-                        idx === 0 || task.priority === "Critical"
-                          ? "md:col-span-2 md:row-span-2"
-                          : "md:col-span-1"
-                      }
-                    >
-                      <TaskCard
-                        task={task}
-                        onPing={handlePing}
-                        onDelete={handleDelete}
-                        onViewDetail={setSelectedTask}
-                        isLarge={idx === 0 || task.priority === "Critical"}
-                        locale={locale}
-                      />
-                    </div>
-                  ))}
-                </motion.div>
-              )}
             </AnimatePresence>
           )}
         </AnimatePresence>
+
+        {totalPages > 1 && (
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 bg-white dark:bg-slate-900/60 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 backdrop-blur-xl shadow-sm">
+            <div className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
+              Showing{" "}
+              <span className="text-primary">
+                {(currentPage - 1) * itemsPerPage + 1}
+              </span>{" "}
+              -{" "}
+              <span className="text-primary">
+                {Math.min(currentPage * itemsPerPage, filteredTasks.length)}
+              </span>{" "}
+              of{" "}
+              <span className="text-navy dark:text-white">
+                {filteredTasks.length}
+              </span>{" "}
+              Dispatch Records
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="size-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-primary disabled:opacity-30 disabled:hover:bg-slate-50 transition-all border-none"
+              >
+                <ChevronLeft size={20} />
+              </Button>
+
+              <div className="flex items-center gap-1">
+                {[...Array(totalPages)].map((_, i) => {
+                  const pageNumber = i + 1;
+                  // Only show current, first, last, and around current
+                  if (
+                    pageNumber === 1 ||
+                    pageNumber === totalPages ||
+                    (pageNumber >= currentPage - 1 &&
+                      pageNumber <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className={`size-11 rounded-2xl text-[10px] font-black transition-all ${
+                          currentPage === pageNumber
+                            ? "bg-primary text-white shadow-lg shadow-primary/20 scale-110"
+                            : "bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-navy dark:hover:text-white"
+                        }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  } else if (
+                    pageNumber === currentPage - 2 ||
+                    pageNumber === currentPage + 2
+                  ) {
+                    return (
+                      <span key={pageNumber} className="px-1 text-slate-300">
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="size-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-primary disabled:opacity-30 disabled:hover:bg-slate-50 transition-all border-none"
+              >
+                <ChevronRight size={20} />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Dialog open={!!selectedTask} onOpenChange={() => setSelectedTask(null)}>
@@ -445,7 +533,9 @@ export default function AssignmentsPage() {
                         Keterangan Tugas
                       </h5>
                       <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed italic border-l-4 border-primary/20 pl-4 bg-slate-50 dark:bg-slate-900/50 py-4 rounded-r-xl">
-                        &quot;{selectedTask.notes || "Tidak ada catatan tambahan."}&quot;
+                        &quot;
+                        {selectedTask.notes || "Tidak ada catatan tambahan."}
+                        &quot;
                       </p>
                     </div>
 
@@ -632,7 +722,10 @@ function TaskCard({
   isLarge = false,
   locale,
 }: any) {
-  const timeLabel = formatDistanceToNow(new Date(task.createdAt), {
+  const taskDate = task.createdAt ? new Date(task.createdAt) : new Date();
+  const validDate = isNaN(taskDate.getTime()) ? new Date() : taskDate;
+
+  const timeLabel = formatDistanceToNow(validDate, {
     addSuffix: true,
     locale,
   });
@@ -716,13 +809,33 @@ function TaskCard({
         <div className="space-y-1.5">
           <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
             <span className="text-slate-400">Progres Capaian</span>
-            <span className="text-primary">{task.progress}%</span>
+            <span
+              className="font-black"
+              style={{
+                color: `var(--color-${
+                  task.category.toLowerCase() === "keamanan"
+                    ? "rose"
+                    : task.category.toLowerCase() === "logistik"
+                    ? "emerald"
+                    : "primary"
+                })`,
+              }}
+            >
+              {task.progress || 10}%
+            </span>
           </div>
           <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${task.progress}%` }}
-              className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
+            <div
+              className={`h-full transition-all duration-1000 ease-out ${
+                task.category.toLowerCase() === "sar"
+                  ? "bg-blue-500 shadow-[0_0_10px_#3b82f6]"
+                  : task.category.toLowerCase() === "logistik"
+                  ? "bg-emerald-500 shadow-[0_0_10px_#10b981]"
+                  : task.category.toLowerCase() === "keamanan"
+                  ? "bg-rose-500 shadow-[0_0_10px_#f43f5e]"
+                  : "bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
+              }`}
+              style={{ width: `${task.progress || 10}%` }}
             />
           </div>
         </div>
@@ -734,10 +847,10 @@ function TaskCard({
       >
         <div className="flex -space-x-2">
           <div
-            className="size-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400"
-            title={task.assignee}
+            className="size-8 rounded-full border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] font-black"
+            title={task.assignee || "Unassigned"}
           >
-            {task.assignee.charAt(0)}
+            {(task.assignee || "U").charAt(0)}
           </div>
           <button
             className="size-8 rounded-full border-2 border-white dark:border-slate-900 bg-emerald-500 text-white flex items-center justify-center"
@@ -804,10 +917,18 @@ function TaskListRow({ task, onPing, onDelete, onViewDetail }: any) {
         <p className="text-[8px] font-black uppercase text-slate-400 mb-1">
           Status Progres
         </p>
-        <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full">
+        <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-primary rounded-full"
-            style={{ width: `${task.progress}%` }}
+            className={`h-full transition-all duration-1000 ${
+              task.category.toLowerCase() === "sar"
+                ? "bg-blue-500"
+                : task.category.toLowerCase() === "logistik"
+                ? "bg-emerald-500"
+                : task.category.toLowerCase() === "keamanan"
+                ? "bg-rose-500"
+                : "bg-primary"
+            }`}
+            style={{ width: `${task.progress || 10}%` }}
           />
         </div>
       </div>

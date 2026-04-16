@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { getDictionary, Locale } from "@/lib/get-dictionary";
 import { Providers } from "@/app/[lang]/providers";
+import { ThemeProvider } from "next-themes";
 import "@/app/globals.css";
 
 const inter = Inter({
@@ -84,7 +85,7 @@ export async function generateStaticParams() {
   return [{ lang: "id" }, { lang: "en" }];
 }
 
-import { ThemeProvider } from "next-themes";
+
 import { verifyJWT, SESSION_COOKIE_NAME } from "@/lib/jwt";
 import { cookies } from "next/headers";
 
@@ -125,8 +126,8 @@ export default async function LocaleLayout({
       <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <Providers dict={safeDict}>
@@ -136,7 +137,7 @@ export default async function LocaleLayout({
               expand
               richColors
               position="bottom-right"
-              theme="system"
+              theme="light"
             />
           </Providers>
         </ThemeProvider>

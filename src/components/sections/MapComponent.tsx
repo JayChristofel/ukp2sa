@@ -135,7 +135,7 @@ const MapLayers = ({
 
     const size = count < 10 ? 40 : count < 100 ? 48 : 56;
     const iconMarkup =
-      CLUSTER_ICON_SVG[dominantType] || CLUSTER_ICON_SVG.report;
+      CLUSTER_ICON_SVG[dominantType] || CLUSTER_ICON_SVG.report || "";
 
     return L.divIcon({
       html: `
