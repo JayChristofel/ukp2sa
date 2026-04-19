@@ -30,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { User, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 interface HeaderProps {
   isDark: boolean;

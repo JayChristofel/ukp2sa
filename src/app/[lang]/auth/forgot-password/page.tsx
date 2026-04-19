@@ -45,11 +45,11 @@ export default function ForgotPasswordPage() {
     });
 
     toast.promise(forgotPromise, {
-      loading: lang === "en" ? "Transmitting recovery link..." : "Mengirim link pemulihan...",
+      loading: d.transmitting || "TRANSMITTING...",
       success: () => {
         setSubmitted(true);
         setLoading(false);
-        return lang === "en" ? "Reset link sent!" : "Link reset terkirim!";
+        return d.success_reset || "Reset link sent!";
       },
       error: (err: any) => {
         setLoading(false);
@@ -67,28 +67,30 @@ export default function ForgotPasswordPage() {
   if (submitted) {
     return (
       <AuthLayout
-        title={lang === "en" ? "Link Deployed" : "Link Dikirim"}
-        subtitle={lang === "en" ? "Check your secure inbox or spam folder." : "Cek inbox atau folder spam lo."}
+        title={d.link_deployed || "Link Deployed"}
+        subtitle={d.check_inbox || "Check your secure inbox or spam folder."}
       >
         <div className="flex flex-col items-center text-center gap-8 py-6">
           <div className="size-24 rounded-[2.5rem] bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-2xl shadow-emerald-500/20 border border-emerald-500/20">
             <CheckCircle2 size={48} className="animate-in zoom-in duration-500" />
           </div>
-          <div className="space-y-2 px-4">
+          <div className="space-y-3 px-4">
              <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed">
                {d.forgot_desc || "Kami telah mengirimkan instruksi pemulihan kata sandi ke email Anda."}
              </p>
-             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-500 opacity-60">Authentication Protocol Active</p>
+             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-500 opacity-60">
+                {d.auth_protocol_active || "Authentication Protocol Active"}
+             </p>
           </div>
-          <div className="flex flex-col w-full gap-4">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.95 }} className="w-full">
+          <div className="flex flex-col w-full gap-4 pt-4">
+            <motion.div whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }} className="w-full">
               <Button
                 variant="outline"
                 className="w-full h-16 rounded-[1.5rem] text-[10px] tracking-[0.2em] uppercase font-black border-slate-200 dark:border-slate-800 flex items-center justify-center gap-3 transition-all hover:bg-slate-50 dark:hover:bg-slate-900"
                 onClick={() => setSubmitted(false)}
               >
                 <RefreshCw size={18} />
-                {lang === "en" ? "RESEND TRANSMISSION" : "KIRIM ULANG EMAIL"}
+                {d.resend_transmission || "RESEND TRANSMISSION"}
               </Button>
             </motion.div>
             <Link
@@ -111,7 +113,9 @@ export default function ForgotPasswordPage() {
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-8">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Email Terdaftar</Label>
+          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+             {d.registered_email || "Registered Email"}
+          </Label>
           <Input
             id="email"
             name="email"
@@ -120,13 +124,13 @@ export default function ForgotPasswordPage() {
             required
             autoFocus
             disabled={loading}
-            className="h-14 rounded-2xl md:rounded-[1.5rem] bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 focus:ring-primary-500/20"
+            className="h-14 rounded-2xl md:rounded-[1.5rem] bg-white/50 dark:bg-slate-800/50 border-slate-200 dark:border-white/10 focus:ring-primary-500/20 transition-all"
           />
         </div>
 
         <motion.div 
-          whileHover={!loading ? { scale: 1.02 } : {}} 
-          whileTap={!loading ? { scale: 0.95, rotate: -0.5 } : {}}
+          whileHover={!loading ? { scale: 1.02, y: -2 } : {}} 
+          whileTap={!loading ? { scale: 0.98 } : {}}
         >
           <Button
             type="submit"
@@ -138,7 +142,7 @@ export default function ForgotPasswordPage() {
               {loading ? (
                 <>
                   <Loader2 size={24} className="animate-spin text-primary" />
-                  <span className="animate-pulse">{lang === "en" ? "TRANSMITTING..." : "MENGIRIM..."}</span>
+                  <span className="animate-pulse">{d.transmitting || "TRANSMITTING..."}</span>
                 </>
               ) : (
                 <>
@@ -152,12 +156,12 @@ export default function ForgotPasswordPage() {
         </motion.div>
 
         <p className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-          Already Remember?{" "}
+          {d.already_remember || "Already Remember?"}{" "}
           <Link
             href={`/${lang}/auth/login`}
-            className="text-primary-500 hover:text-primary-600 transition-colors"
+            className="text-primary-500 hover:text-primary-600 transition-colors underline decoration-primary/30 underline-offset-4"
           >
-            {d.login_button || "Sign In Instead"}
+            {d.sign_in_instead || "Sign In Instead"}
           </Link>
         </p>
       </form>

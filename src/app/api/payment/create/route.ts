@@ -11,11 +11,17 @@ const snap = new midtransClient.Snap({
 });
 
 /** POST /api/payment/create — Create Midtrans payment transaction (protected) */
-const postHandler = async (request: Request) => {
+const postHandler = async (request: Request, { body, session }: any) => {
   try {
     const supabase = await createClient();
-    const body = await request.json();
-    const { amount, budgetCode, programName, partnerName, partnerId, disbursementStage, source } = body;
+    const { amount, budgetCode, programName, partnerName, disbursementStage, source } = body;
+
+    // SECURITY: Paksa instansiId dari session, jangan percaya body (Anti-Impersonation)
+    const instansiId = session.user.role === 'admin' ? (body.partnerId || "INTERNAL") : session.user.instansiId;
+
+    if (!instansiId && session.user.role !== 'admin') {
+      return NextResponse.json({ success: false, error: "Identitas instansi tidak ditemukan." }, { status: 403 });
+    }
 
     const order_id = `ORDER-${Math.floor(Math.random() * 1000000)}-${Date.now()}`;
 
@@ -24,7 +30,7 @@ const postHandler = async (request: Request) => {
       .from('financial_records')
       .insert([
         {
-          instansi_id: partnerId || "INTERNAL",
+          instansi_id: instansiId,
           program_name: programName,
           allocation: amount,
           realization: 0,
@@ -63,34 +69,31 @@ const postHandler = async (request: Request) => {
         },
       ],
       customer_details: {
-        first_name: partnerName,
-        email: "finance@ukp2sa.id",
+        first_name: partnerName || session.user.name,
+        email: session.user.email,
       },
     };
 
     const transaction = await snap.createTransaction(parameter);
-    console.log("Midtrans Transaction Created:", transaction.token);
+    
+    // Audit log
+    const { AuditService } = await import("@/services/AuditService");
+    await AuditService.log({
+      action: "INIT_PAYMENT",
+      module: "FINANCIAL",
+      details: `Inisialisasi pembayaran Rp${amount.toLocaleString()} untuk program ${programName}`,
+      meta: { orderId: order_id, instansiId }
+    });
 
     return NextResponse.json({
+      success: true,
       token: transaction.token,
       redirect_url: transaction.redirect_url,
     });
   } catch (error: any) {
-    console.error("Payment API Error Detail:");
-    console.error("- Message:", error.message);
-    
-    if (error.ApiResponse) {
-      console.error("- Midtrans Response:", error.ApiResponse);
-    }
-
-    return NextResponse.json(
-      { 
-        error: error.message,
-        details: error.ApiResponse || null 
-      }, 
-      { status: 500 }
-    );
+    console.error("Payment API Error:", error.message);
+    return NextResponse.json({ success: false, error: "Gagal memproses inisialisasi pembayaran." }, { status: 500 });
   }
 };
 
-export const POST = secureRoute(postHandler);
+export const POST = secureRoute(postHandler, { roles: ['admin', 'partner'], limit: 10 });

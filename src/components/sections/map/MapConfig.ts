@@ -67,4 +67,12 @@ export const SIDEBAR_GROUPS = [
       { id: "report", labelKey: "report", icon: AlertTriangle, color: "#fb7185" },
     ],
   },
+  {
+    id: "intelijen",
+    labelKey: "intelijen",
+    items: [
+      { id: "ngo", labelKey: "ngo", icon: ShieldCheck, color: "#0ea5e9" },
+      { id: "r3p-damage", labelKey: "r3p-damage", icon: AlertTriangle, color: "#f43f5e" },
+    ],
+  },
 ];

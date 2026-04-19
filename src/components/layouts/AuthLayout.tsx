@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useI18n } from "@/app/[lang]/providers";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -17,8 +19,11 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   title,
   subtitle,
 }) => {
+  const dict = useI18n();
+  const common = dict?.common || {};
+
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden">
+    <div className="relative min-h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden">
       {/* Dynamic Background Effects */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <motion.div
@@ -42,69 +47,48 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] dark:opacity-[0.05] mix-blend-overlay" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-10 w-full max-w-lg sm:max-w-md my-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="bento-card bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/20 dark:border-slate-800/50 p-8 md:p-10 shadow-2xl relative overflow-hidden"
+          className="bento-card bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/20 dark:border-slate-800/50 p-6 sm:p-8 md:p-10 shadow-2xl relative overflow-hidden rounded-[2.5rem] md:rounded-[3rem]"
         >
-          {/* Top Gear Decoration */}
-          <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-            <svg
-              width="120"
-              height="120"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="animate-spin-slow"
-            >
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 0-2-2h-.44a2 2 0 0 0-2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2 2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 0-2 2h.44a2 2 0 0 0 2-2 2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2 2 2 0 0 1 2-2 2 2 0 0 1 2 2 2 2 0 0 0 2 2v-.44a2 2 0 0 0-2-2 2 2 0 0 1-2-2 2 2 0 0 1 2-2 2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2 2 2 0 0 1-2-2 2 2 0 0 1 2-2 2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+          {/* Internal Language Switcher (Responsive Safe) */}
+          <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+            <LanguageSwitcher />
           </div>
 
-          <div className="flex flex-col gap-8 relative z-10">
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-6 sm:gap-8 relative z-10">
+            <div className="flex flex-col gap-1">
               <Link
                 href="/"
-                className="inline-flex items-center text-xs font-bold text-slate-400 hover:text-primary-500 transition-colors gap-2 group mb-4"
+                className="inline-flex items-center text-[10px] font-black tracking-widest text-slate-400 hover:text-primary transition-colors gap-2 group mb-4 uppercase"
               >
                 <ArrowLeft
                   size={14}
                   className="group-hover:-translate-x-1 transition-transform"
                 />
-                KEMBALI KE BERANDA
+                {common.back_to_home || (dict?.common?.back || "BACK")}
               </Link>
 
-              <div className="flex items-center gap-4 mb-2">
-                <div className="size-12 rounded-2xl flex items-center justify-center bg-white/50 dark:bg-slate-800/80 p-2 shadow-glow border border-white/20 dark:border-slate-700/50">
+              <div className="flex flex-col gap-4 mb-2">
+                <div className="size-14 rounded-[1.25rem] flex items-center justify-center bg-white dark:bg-slate-800 shadow-xl border border-slate-100 dark:border-white/5 p-2.5">
                   <Image
                     src="/assets/logo-ukp2sa.png"
-                    alt="Logo Light"
-                    width={48}
-                    height={48}
+                    alt="Logo"
+                    width={56}
+                    height={56}
                     priority
-                    className="w-full h-full object-contain dark:hidden"
-                  />
-                  <Image
-                    src="/assets/logo-ukp2sa.png"
-                    alt="Logo Dark"
-                    width={48}
-                    height={48}
-                    priority
-                    className="w-full h-full object-contain hidden dark:block"
+                    className="w-full h-full object-contain"
                   />
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-2xl font-black text-navy dark:text-white tracking-tight leading-none uppercase">
+                  <h1 className="text-2xl sm:text-3xl font-black text-navy dark:text-white tracking-tighter leading-[1.1] uppercase max-w-[80%]">
                     {title}
                   </h1>
                   {subtitle && (
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 uppercase tracking-wider leading-relaxed">
                       {subtitle}
                     </p>
                   )}
@@ -114,10 +98,9 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
 
             <div className="flex flex-col gap-6">{children}</div>
 
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-4">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
-                © 2026 UKP2SA - Unit Kerja Percepatan Pemulihan Aceh. ALL RIGHTS
-                RESERVED.
+            <div className="pt-6 border-t border-slate-100 dark:border-white/5 flex flex-col items-center gap-4">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-center leading-relaxed max-w-[280px]">
+                {common.copyright || "© 2026 UKP2SA - Unit Kerja Percepatan Pemulihan Sumatera Aceh. ALL RIGHTS RESERVED."}
               </p>
             </div>
           </div>

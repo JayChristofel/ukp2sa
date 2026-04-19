@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
-export async function GET(request: Request) {
+export const GET = secureRoute(async (request: Request) => {
   try {
     const { searchParams } = new URL(request.url);
     const topicId = searchParams.get("topicId");
 
     if (!topicId) {
-      return NextResponse.json({ success: false, message: "topicId is required" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "topicId is required" }, { status: 400 });
     }
 
     const supabase = await createClient();
     const { data: questions, error } = await supabase
       .from('questions')
-      .select('*')
+      .select('id, topic_id, parent_id, question_id, question_en, question_type, options, required')
       .eq('topic_id', Number(topicId))
       .order('id', { ascending: true });
     
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
       data: formattedQuestions
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    console.error("Questions API Error:", error);
+    return NextResponse.json({ success: false, error: "Gagal mengambil data kuisioner aduan." }, { status: 500 });
   }
-}
+}, { isPublic: true, limit: 50 });

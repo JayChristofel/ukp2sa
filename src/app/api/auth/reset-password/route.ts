@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     // 1. Validasi token
     const { data: resetEntry } = await supabase
       .from("password_resets")
-      .select("*")
+      .select("email, expires_at")
       .eq("token", token)
       .single();
 

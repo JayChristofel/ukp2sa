@@ -13,7 +13,7 @@ const getHandler = async (req: Request, { session }: any) => {
 
   const { data: notifications, error } = await supabase
     .from('notifications')
-    .select('*')
+    .select('id, title, description, type, priority, action_label, link, read_by, created_at')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -30,6 +30,7 @@ const getHandler = async (req: Request, { session }: any) => {
     status: (n.read_by || []).includes(userId) ? "read" : "unread",
     date: new Date(n.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
     time: new Date(n.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+    createdAt: n.created_at,
   }));
 
   return NextResponse.json({ success: true, data: formattedNotifs });
@@ -41,7 +42,7 @@ const postHandler = async (req: Request, { body }: any) => {
   const { title, description, type, priority, actionLabel, link, externalId } = body;
 
   const { data: existing } = externalId ? 
-    await supabase.from('notifications').select('*').eq('external_id', externalId).single() : 
+    await supabase.from('notifications').select('id').eq('external_id', externalId).single() : 
     { data: null };
 
   if (existing) {
@@ -78,20 +79,26 @@ const patchHandler = async (req: Request, { session }: any) => {
   const userId = session?.user?.id || session?.user?.email || "anonymous";
 
   if (action === "mark_all_read") {
-    // In Postgres, we can append to array if not exists
-    // We'll use a raw query or fetch and update for each if needed, 
-    // but for "mark all", simpler to update where and use array_append
+    // Attempt server-side RPC first (optimal: single DB call)
     const { error } = await supabase.rpc('mark_all_notifications_read', { user_id: userId });
     
-    // Fallback if RPC not defined:
+    // Fallback: Batch approach — fetch only unread IDs then batch update
     if (error) {
-       // Manual approach
-       const { data: unread } = await supabase.from('notifications').select('id, read_by');
-       for (const n of (unread || [])) {
-         if (!n.read_by.includes(userId)) {
-           await supabase.from('notifications').update({ read_by: [...n.read_by, userId] }).eq('id', n.id);
-         }
-       }
+      const { data: unread } = await supabase
+        .from('notifications')
+        .select('id, read_by')
+        .not('read_by', 'cs', `{${userId}}`);
+
+      if (unread && unread.length > 0) {
+        // Batch update dalam satu Promise.all — paralel, bukan sequential
+        await Promise.all(
+          unread.map(n =>
+            supabase.from('notifications')
+              .update({ read_by: [...(n.read_by || []), userId] })
+              .eq('id', n.id)
+          )
+        );
+      }
     }
     
     return NextResponse.json({ success: true, message: "All marked as read" });
@@ -130,7 +137,7 @@ const deleteHandler = async (req: Request) => {
   return NextResponse.json({ success: false, error: "Missing parameters" }, { status: 400 });
 };
 
-export const GET = secureRoute(getHandler);
-export const POST = secureRoute(postHandler, { schema: notificationSchema });
-export const PATCH = secureRoute(patchHandler);
-export const DELETE = secureRoute(deleteHandler);
+export const GET = secureRoute(getHandler, { roles: ['admin', 'operator'], limit: 40 });
+export const POST = secureRoute(postHandler, { schema: notificationSchema, roles: ['admin', 'operator'], limit: 10 });
+export const PATCH = secureRoute(patchHandler, { roles: ['admin', 'operator'], limit: 20 });
+export const DELETE = secureRoute(deleteHandler, { roles: ['admin', 'operator'], limit: 10 });

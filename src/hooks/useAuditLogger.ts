@@ -18,6 +18,8 @@ export const useAuditLogger = () => {
     level: "info" | "warn" | "error" = "info",
     diff?: any
   ) => {
+    if (!session) return; // Silent return if no session
+
     const userName = session?.user?.name || "System User"; 
 
     return apiService.createAuditLog({

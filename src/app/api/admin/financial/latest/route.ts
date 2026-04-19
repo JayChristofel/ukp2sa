@@ -2,24 +2,29 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
 import { secureRoute } from "@/lib/api-middleware";
 
-/** GET /api/admin/financial/latest — Fetch latest financial payment records */
-const getHandler = async () => {
+export const GET = secureRoute(async (req: Request, { session }: any) => {
   try {
     const supabase = await createClient();
     
-    const { data: records, error } = await supabase
+    let query = supabase
       .from('financial_records')
-      .select('*')
+      .select('*') // Reverting to * temporarily to avoid "column does not exist"
       .not('payment_status', 'is', null)
       .order('last_update', { ascending: false })
-      .limit(5);
+      .limit(20);
+
+    // Multi-tenancy isolation
+    if (session.user.role !== 'admin' && session.user.instansiId) {
+      query = query.eq('instansi_id', session.user.instansiId);
+    }
+
+    const { data: records, error } = await query;
 
     if (error) throw error;
 
     return NextResponse.json(records);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Financial API Error:", error);
+    return NextResponse.json({ success: false, error: "Gagal mengambil data finansial." }, { status: 500 });
   }
-};
-
-export const GET = secureRoute(getHandler);
+}, { roles: ['admin', 'partner', 'operator'], limit: 30 });

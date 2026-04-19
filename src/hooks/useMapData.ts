@@ -6,16 +6,35 @@ import { apiService } from "@/services/unifiedService";
 import { REGENCY_COORDINATES } from "@/lib/constants";
 import { useI18n } from "../app/[lang]/providers";
 
+/**
+ * Helper for grid marker distribution around a center point
+ * Provides a much "neater" and aligned appearance compared to spiral.
+ */
+const getGridOffset = (index: number) => {
+  const columns = 8; // Number of markers per row
+  const spacing = 0.006; // ~600 meters spacing
+  
+  const row = Math.floor(index / columns);
+  const col = index % columns;
+  
+  return {
+    lat: (row * spacing) - (spacing * 2), // Slight vertical offset
+    lon: (col * spacing) - (spacing * 3.5) // Center the grid horizontally
+  };
+};
+
 export const useMapData = (acehCenter: [number, number], enabled = true) => {
-  const PAGE_LIMIT = 100;
+  const PAGE_LIMIT = 100; // Match local service PAGE_LIMIT
 
   const infiniteOpts = {
     initialPageParam: 1,
-    getNextPageParam: (lastPage: any[], allPages: any[][]) =>
-      lastPage.length >= PAGE_LIMIT ? allPages.length + 1 : undefined,
+    getNextPageParam: (lastPage: any, allPages: any[]) => {
+      if (!Array.isArray(lastPage)) return undefined;
+      return lastPage.length >= PAGE_LIMIT ? allPages.length + 1 : undefined;
+    },
     retry: 2,
     retryDelay: 1000,
-    staleTime: 300000, // 5 minutes
+    staleTime: 300000,
     refetchOnWindowFocus: false,
     enabled,
   };
@@ -24,12 +43,10 @@ export const useMapData = (acehCenter: [number, number], enabled = true) => {
     queryKey: ["missingPersons"],
     queryFn: ({ pageParam }) => apiService.getMissingPersons(pageParam),
     ...infiniteOpts,
-    refetchInterval: enabled ? 30000 : false, // Refresh only if enabled
-    staleTime: 10000, // Becomes stale faster
+    refetchInterval: enabled ? 30000 : false,
+    staleTime: 10000,
   });
 
-  // ... (Update all queries to use enabled)
-  
   const qTendPoints = useInfiniteQuery({
     queryKey: ["tendPoints"],
     queryFn: ({ pageParam }) => apiService.getTendPoints(pageParam),
@@ -86,7 +103,6 @@ export const useMapData = (acehCenter: [number, number], enabled = true) => {
     enabled,
   });
 
-  // --- BANJIR SUMATRA PUBLIC API: NGO & R3P ---
   const qNgo = useQuery({
     queryKey: ["ngoData"],
     queryFn: () => apiService.getNgo(),
@@ -119,8 +135,10 @@ export const useMapData = (acehCenter: [number, number], enabled = true) => {
   const dm = dict?.map || {};
   const items = dm.items || {};
 
-  // Helper to flatten infinite query pages directly from data
-  const flat = (data: any) => data?.pages?.flat() ?? [];
+  const flat = (data: any) => {
+    if (!data || !Array.isArray(data.pages)) return [];
+    return data.pages.flat().filter(Boolean) || [];
+  };
 
   const mMissing = React.useMemo(() => {
     return flat(missingData).filter(i => i.missingConditionDetails?.locationLastSeen?.lat).map(item => ({
@@ -291,59 +309,123 @@ export const useMapData = (acehCenter: [number, number], enabled = true) => {
     }));
   }, [localReportsData, items]);
 
-  // NGO intervention markers — positioned by regency coordinates
+  // Helper to find coordinates even if the regency name is not exact
+  const findRegencyCoords = (name: string): [number, number] => {
+    if (!name) return acehCenter;
+    
+    // 1. Exact match
+    if (REGENCY_COORDINATES[name]) return REGENCY_COORDINATES[name];
+    
+    // 2. Fuzzy match (check if name is inside any key or vice-versa)
+    const cleanName = name.toLowerCase().replace(/kabupaten|kota/g, "").trim();
+    const entry = Object.entries(REGENCY_COORDINATES).find(([key]) => {
+      const cleanKey = key.toLowerCase().replace(/kabupaten|kota/g, "").trim();
+      return cleanKey === cleanName || cleanKey.includes(cleanName) || cleanName.includes(cleanKey);
+    });
+    
+    return entry ? entry[1] : acehCenter;
+  };
+
+  // Helper to normalize and compare area names
+  const normalizeArea = (name: string) => 
+    (name || "").toLowerCase().replace(/kabupaten|kota|desa|kelurahan|kecamatan/g, "").trim();
+
   const mNgo = React.useMemo(() => {
     return (ngoData ?? []).map((item: any, idx: number) => {
-      const regencyName = item.regency?.[0] || "Aceh";
-      const coords = REGENCY_COORDINATES[regencyName] || acehCenter;
-      // Slight offset per item to avoid marker stacking
-      const offsetLat = (idx % 10) * 0.005 - 0.025;
-      const offsetLon = (Math.floor(idx / 10) % 5) * 0.005 - 0.0125;
+      const regencyName = Array.isArray(item.regency) ? item.regency[0] : item.regency || "Aceh";
+      const districtName = Array.isArray(item.district) ? item.district[0] : item.district || "";
+      const villageName = Array.isArray(item.village) ? item.village[0] : item.village || "";
+      
+      const regencyCoords = findRegencyCoords(regencyName);
+      const loc = item.interventionLocationCoordinates;
+      const itemLat = loc?.lat || loc?.latitude || item.latitude || item.lat;
+      const itemLon = loc?.lon || loc?.longitude || item.longitude || item.lon;
+      
+      const hasRealCoords = itemLat && itemLon && !isNaN(parseFloat(itemLat));
+      const grid = getGridOffset(idx);
+      
+      // DEEP CROSS-REFERENCE with R3P
+      // Priority 1: Village match, Priority 2: District match, Priority 3: Regency match
+      const nReg = normalizeArea(regencyName);
+      const nDist = normalizeArea(districtName);
+      const nVill = normalizeArea(villageName);
+
+      const relatedDamage = (r3pData ?? []).find((r: any) => {
+          const rArea = r.administrativeArea || {};
+          const rReg = normalizeArea(rArea.regencyName);
+          const rDist = normalizeArea(rArea.districtName);
+          const rVill = normalizeArea(rArea.villageName);
+          
+          return (rReg === nReg && rDist === nDist && rVill === nVill) || // Village Level
+                 (rReg === nReg && rDist === nDist) ||                    // District Level
+                 (rReg === nReg);                                         // Regency Level
+      });
+
       return {
         id: `ngo-${item.no || idx}`,
         type: "ngo",
         markerType: "ngo",
-        lat: coords[0] + offsetLat,
-        lon: coords[1] + offsetLon,
+        lat: hasRealCoords ? parseFloat(itemLat) : (regencyCoords[0] + grid.lat),
+        lon: hasRealCoords ? parseFloat(itemLon) : (regencyCoords[1] + grid.lon),
         title: `${item.parentOrganization?.[0]?.name || "NGO"}: ${(item.interventionActivityDescription || "").slice(0, 60)}`,
         status: item.currentInterventionStatus || "Aktif",
         regency: regencyName,
         category: items.ngo || "Intervensi NGO",
-        data: item,
+        data: { ...item, relatedDamage, matchLevel: nVill ? 'village' : nDist ? 'district' : 'regency' },
         groupId: "ngo"
       };
     });
-  }, [ngoData, acehCenter, items]);
+  }, [ngoData, r3pData, acehCenter, items]);
 
-  // R3P damage markers — per village, positioned by regency coordinates
   const mR3P = React.useMemo(() => {
     return (r3pData ?? []).map((item: any, idx: number) => {
       const area = item.administrativeArea || {};
       const regencyName = area.regencyName || "Aceh";
-      const coords = REGENCY_COORDINATES[regencyName] || acehCenter;
-      const offsetLat = (idx % 15) * 0.004 - 0.03;
-      const offsetLon = (Math.floor(idx / 15) % 8) * 0.004 - 0.016;
-      // Calculate severity from houses cluster
+      const districtName = area.districtName || "";
+      const villageName = area.villageName || "";
+      
+      const regencyCoords = findRegencyCoords(regencyName);
+      const itemLat = item.latitude || item.lat;
+      const itemLon = item.longitude || item.lon;
+      
+      const hasRealCoords = itemLat && itemLon && !isNaN(parseFloat(itemLat));
+      const grid = getGridOffset(idx + 5); 
+      
       const houses = item.clusters?.find((c: any) => c.key === "houses");
       const heavyDamage = houses?.metrics?.find((m: any) => m.key === "house_damage_heavy")?.value || 0;
       const severity = heavyDamage > 500 ? "Kritis" : heavyDamage > 100 ? "Berat" : heavyDamage > 0 ? "Sedang" : "Ringan";
+      
+      // DEEP CROSS-REFERENCE with NGO
+      const rReg = normalizeArea(regencyName);
+      const rDist = normalizeArea(districtName);
+      const rVill = normalizeArea(villageName);
+
+      const relatedNgos = (ngoData ?? []).filter((n: any) => {
+          const nReg = normalizeArea(Array.isArray(n.regency) ? n.regency[0] : n.regency);
+          const nDist = normalizeArea(Array.isArray(n.district) ? n.district[0] : n.district);
+          const nVill = normalizeArea(Array.isArray(n.village) ? n.village[0] : n.village);
+          
+          return (nReg === rReg && nDist === rDist && nVill === rVill) ||
+                 (nReg === rReg && nDist === rDist) ||
+                 (nReg === rReg);
+      });
+
       return {
         id: `r3p-${item.id || idx}`,
         type: "r3p-damage",
         markerType: "r3p-damage",
-        lat: coords[0] + offsetLat,
-        lon: coords[1] + offsetLon,
+        lat: hasRealCoords ? parseFloat(itemLat) : (regencyCoords[0] + grid.lat),
+        lon: hasRealCoords ? parseFloat(itemLon) : (regencyCoords[1] + grid.lon),
         title: `R3P ${area.villageName || area.districtName || regencyName}`,
         status: severity === "Kritis" || severity === "Berat" ? "Diproses" : "Selesai",
         regency: regencyName,
         category: items["r3p-damage"] || "Data Kerusakan R3P",
-        data: { ...item, severity },
+        data: { ...item, severity, relatedNgos },
         groupId: "r3p"
       };
     });
-  }, [r3pData, acehCenter, items]);
+  }, [r3pData, ngoData, acehCenter, items]);
 
-  // Combined markers array
   const markers = React.useMemo(() => {
     return [
       ...mMissing,
@@ -360,80 +442,36 @@ export const useMapData = (acehCenter: [number, number], enabled = true) => {
     ];
   }, [mMissing, mTend, mPosko, mPolice, mGenFac, mPubFac, mVillage, mReports, mLocalReports, mNgo, mR3P]);
 
-  // Staggered auto-fetch to prevent main-thread choking
   useEffect(() => {
     if (!enabled) return;
-    
-    const list = [
-      qMissingPersons,
-      qTendPoints,
-      qPosko,
-      qPoliceOffices,
-      qGenFacilities,
-      qPubFacilities,
-      qVillageDist,
-    ];
-    // Limit auto-fetch to first 5 pages per category to avoid browser death
-    // on massive datasets. The user can fetch more if they move the map (future feature)
-    // or we can increase this cap if needed.
+    const list = [qMissingPersons, qTendPoints, qPosko, qPoliceOffices, qGenFacilities, qPubFacilities, qVillageDist];
     const next = list.find((q) => {
-      const pageCount = q.data?.pages?.length || 0;
+      const pageCount = q.data?.pages?.length ?? 0;
       return q.hasNextPage && !q.isFetchingNextPage && pageCount < 5;
     });
-
     if (next) {
-      // Increased delay to 500ms lets the browser handle rendering & main thread
-      // tasks more comfortably between data chunks.
       const timer = setTimeout(() => next.fetchNextPage(), 500);
       return () => clearTimeout(timer);
     }
   }, [
-    qMissingPersons.hasNextPage,
-    qMissingPersons.isFetchingNextPage,
-    qMissingPersons.data?.pages?.length,
-    qTendPoints.hasNextPage,
-    qTendPoints.isFetchingNextPage,
-    qTendPoints.data?.pages?.length,
-    qPosko.hasNextPage,
-    qPosko.isFetchingNextPage,
-    qPosko.data?.pages?.length,
-    qPoliceOffices.hasNextPage,
-    qPoliceOffices.isFetchingNextPage,
-    qPoliceOffices.data?.pages?.length,
-    qGenFacilities.hasNextPage,
-    qGenFacilities.isFetchingNextPage,
-    qGenFacilities.data?.pages?.length,
-    qPubFacilities.hasNextPage,
-    qPubFacilities.isFetchingNextPage,
-    qPubFacilities.data?.pages?.length,
-    qVillageDist.hasNextPage,
-    qVillageDist.isFetchingNextPage,
-    qVillageDist.data?.pages?.length,
+    qMissingPersons.hasNextPage, qMissingPersons.isFetchingNextPage, qMissingPersons.data?.pages?.length,
+    qTendPoints.hasNextPage, qTendPoints.isFetchingNextPage, qTendPoints.data?.pages?.length,
+    qPosko.hasNextPage, qPosko.isFetchingNextPage, qPosko.data?.pages?.length,
+    qPoliceOffices.hasNextPage, qPoliceOffices.isFetchingNextPage, qPoliceOffices.data?.pages?.length,
+    qGenFacilities.hasNextPage, qGenFacilities.isFetchingNextPage, qGenFacilities.data?.pages?.length,
+    qPubFacilities.hasNextPage, qPubFacilities.isFetchingNextPage, qPubFacilities.data?.pages?.length,
+    qVillageDist.hasNextPage, qVillageDist.isFetchingNextPage, qVillageDist.data?.pages?.length,
   ]);
 
-  const allQueries = [
-    qMissingPersons,
-    qTendPoints,
-    qPosko,
-    qPoliceOffices,
-    qGenFacilities,
-    qPubFacilities,
-    qVillageDist,
-    qReports,
-    qNgo,
-    qR3P,
-  ];
-
-  const isLoading = allQueries.some((q) => q.isPending && !q.data);
-  const isError = [qMissingPersons, qTendPoints, qPosko].some(
-    (q) => q.isError && !q.data
-  );
+  const coreQueries = [qReports, qLocalReports, qPosko, qMissingPersons];
+  const isLoading = coreQueries.every((q) => q.isPending && !q.data);
+  const isError = [qPosko, qReports].some((q) => q.isError && !q.data);
 
   return {
     markers,
     isLoading,
     isError,
-    errors: allQueries.reduce((acc: any, q, i) => {
+    errors: [qReports, qNgo, qR3P].reduce((acc: any, q, i) => {
       if (q.error) acc[i] = q.error;
       return acc;
     }, {}),

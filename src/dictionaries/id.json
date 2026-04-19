@@ -84,6 +84,15 @@
     "prev": "Sebelumnya",
     "next": "Selanjutnya"
   },
+  "permission": {
+    "verifying_access": "VERIFIKASI AKSES...",
+    "session_expired": "SESI HABIS",
+    "session_expired_desc": "Silakan login kembali untuk melanjutkan.",
+    "access_denied": "AKSES DITOLAK",
+    "access_denied_role": "Role \"{role}\" tidak memiliki akses ke Admin Dashboard.",
+    "insufficient_permission": "IZIN TIDAK CUKUP",
+    "insufficient_permission_desc": "Anda membutuhkan izin \"{permission}\" untuk mengakses halaman ini. Hubungi administrator untuk mendapatkan akses."
+  },
   "notification": {
     "title": "Notifikasi",
     "unread": "Belum dibaca",
@@ -788,9 +797,40 @@
     "forgot_desc": "Masukkan email lo buat dapetin link reset.",
     "back_to_login": "Kembali ke Login",
     "send_reset": "Kirim Link Reset",
-    "update_password": "Ganti Password",
+    "update_password": "Perbarui Password",
     "register_title": "Buat Akun",
-    "register_subtitle": "Masuk ke Ekosistem Pemulihan Aceh"
+    "register_subtitle": "Bergabung dengan Ekosistem Pemulihan Aceh",
+    "full_name": "Nama Lengkap",
+    "confirm_password": "Konfirmasi Password",
+    "agree_terms": "Saya menyetujui",
+    "terms_policy": "Kebijakan Registrasi & Protokol Keamanan",
+    "error_detected": "Error Terdeteksi",
+    "success_login": "Berhasil! Mengarahkan...",
+    "success_register": "Akun berhasil dibuat! Silakan masuk.",
+    "identifying": "MENGIDENTIFIKASI...",
+    "verifying": "VERIFIKASI...",
+    "registering": "MENDAFTAR...",
+    "processing": "MEMPROSES...",
+    "link_deployed": "LINK DIKIRIM",
+    "check_inbox": "Cek inbox atau folder spam lo.",
+    "auth_protocol_active": "PROTOKOL OTENTIKASI AKTIF",
+    "resend_transmission": "KIRIM ULANG EMAIL",
+    "recovery_mode": "MODE PEMULIHAN",
+    "lost_access_desc": "Kehilangan akses? Kami bantu amankan kembali.",
+    "registered_email": "Email Terdaftar",
+    "transmitting": "MENGIRIM...",
+    "already_remember": "Sudah Ingat?",
+    "sign_in_instead": "Langsung Masuk",
+    "new_secure_password": "Password Aman Baru",
+    "finalize_recovery": "SELESAIKAN PEMULIHAN",
+    "invalid_link_title": "Link Tidak Valid",
+    "invalid_link_desc": "Token reset password tidak ditemukan.",
+    "token_expired": "Link reset password ini tidak valid atau sudah kadaluarsa.",
+    "request_new_link": "MINTA LINK BARU",
+    "encrypting": "MENYIMPAN...",
+    "passwords_mismatch": "Password tidak cocok!",
+    "success_reset": "Password berhasil diperbarui!",
+    "init_session": "Menyiapkan Sesi Keamanan..."
   },
   "contact": {
     "sub": "Hubungi Kami",
@@ -1096,5 +1136,16 @@
       "content": "Anda memiliki hak untuk mengakses, mengoreksi, atau meminta penghapusan data pribadi Anda yang tersimpan di sistem kami kapan saja melalui menu pengaturan akun atau menghubungi layanan bantuan kami."
     },
     "contact_us": "Punya pertanyaan mengenai privasi Anda? Hubungi kami di support@ukp2sa.id"
+  },
+  "error": {
+    "title_anomaly": "Anomali Terdeteksi",
+    "title_missing": "Data Gagal Ditemukan",
+    "desc_sec_breach": "Izin akses anda tidak mencukupi untuk modul ini. Silakan hubungi pusat komando.",
+    "desc_zone_missing": "Transmisi informasi terputus atau data yang diminta tidak tersedia di pangkalan data.",
+    "desc_infra_fail": "Server utama mengalami kegagalan transmisi. Upaya pemulihan otomatis sedang berjalan.",
+    "desc_anomaly": "Terjadi gangguan transmisi informasi yang tidak teridentifikasi pada dashboard.",
+    "button_reinit": "Inisialisasi Ulang",
+    "button_dashboard": "Dashboard Utama",
+    "report_id_label": "REPORT_IDENTIFIER_ID"
   }
 }

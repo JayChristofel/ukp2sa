@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     // 1. Fetch user + role permissions
     const { data: user, error } = await supabase
       .from("users")
-      .select("*")
+      .select("id, name, email, password, role, instansi_id")
       .ilike("email", loginEmail)
       .single();
 

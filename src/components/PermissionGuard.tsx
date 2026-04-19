@@ -5,6 +5,7 @@ import { useSession } from "@/stores/authStore";
 import { usePathname, useRouter } from "next/navigation";
 import { ShieldOff, ArrowLeft, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useI18n } from "@/app/[lang]/providers";
 
 /**
  * Mapping dari path segment admin ke permission yang dibutuhkan.
@@ -42,6 +43,9 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const router = useRouter();
+  const dict = useI18n();
+  const p = dict?.permission || {};
+  const c = dict?.common || {};
 
   // Masih loading session — tampilkan spinner
   if (status === "loading") {
@@ -50,7 +54,7 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
         <div className="text-center space-y-4">
           <Loader2 className="size-10 animate-spin mx-auto text-primary" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            Verifikasi Akses...
+            {p.verifying_access || "VERIFYING ACCESS..."}
           </p>
         </div>
       </div>
@@ -64,9 +68,10 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
     if (status === "unauthenticated") {
       return (
         <AccessDenied
-          title="Sesi Habis"
-          message="Silakan login kembali untuk melanjutkan."
+          title={p.session_expired || "SESSION EXPIRED"}
+          message={p.session_expired_desc || "Please login again to continue."}
           onBack={() => router.push("/")}
+          backLabel={c.back || "BACK"}
         />
       );
     }
@@ -85,9 +90,10 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
   if (!ADMIN_ROLES.includes(user.role)) {
     return (
       <AccessDenied
-        title="Akses Ditolak"
-        message={`Role "${user.role}" tidak memiliki akses ke Admin Dashboard.`}
+        title={p.access_denied || "ACCESS DENIED"}
+        message={(p.access_denied_role || "Role \"{role}\" does not have access to Admin Dashboard.").replace("{role}", user.role)}
         onBack={() => router.back()}
+        backLabel={c.back || "BACK"}
       />
     );
   }
@@ -103,9 +109,10 @@ export default function PermissionGuard({ children }: PermissionGuardProps) {
     if (!userPermissions.includes(requiredPermission)) {
       return (
         <AccessDenied
-          title="Izin Tidak Cukup"
-          message={`Anda membutuhkan izin "${requiredPermission}" untuk mengakses halaman ini. Hubungi administrator untuk mendapatkan akses.`}
+          title={p.insufficient_permission || "INSUFFICIENT PERMISSION"}
+          message={(p.insufficient_permission_desc || "You need \"{permission}\" permission to access this page. Contact administrator to gain access.").replace("{permission}", requiredPermission)}
           onBack={() => router.back()}
+          backLabel={c.back || "BACK"}
         />
       );
     }
@@ -122,10 +129,12 @@ function AccessDenied({
   title,
   message,
   onBack,
+  backLabel,
 }: {
   title: string;
   message: string;
   onBack: () => void;
+  backLabel?: string;
 }) {
   return (
     <motion.div
@@ -150,7 +159,7 @@ function AccessDenied({
           className="inline-flex items-center gap-3 px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
         >
           <ArrowLeft size={16} />
-          Kembali
+          {backLabel || "Back"}
         </button>
       </div>
     </motion.div>

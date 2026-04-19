@@ -9,7 +9,7 @@ export const POST = secureRoute(async (req: Request, { body, session }: any) => 
     const { action, module, details, level = "info", user, ip, ua, diff } = body;
 
     // Auth context from session (High Security)
-    const logUser = user || session?.user?.email || "anonymous";
+    const logUser = user || session.user.email;
     const logIp = ip || req.headers.get("x-forwarded-for") || "127.0.0.1";
     const logUa = ua || req.headers.get("user-agent") || "unknown";
 
@@ -19,7 +19,7 @@ export const POST = secureRoute(async (req: Request, { body, session }: any) => 
       details,
       level,
       user_email: logUser,
-      user_name: session?.user?.name || "anonymous",
+      user_name: session.user.name,
       ip: logIp,
       ua: logUa,
       diff,
@@ -28,9 +28,9 @@ export const POST = secureRoute(async (req: Request, { body, session }: any) => 
     return NextResponse.json({ success: true, message: "Audit trace recorded" });
   } catch (error: any) {
     console.error("Audit post failed:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Gagal mencatat jejak audit." }, { status: 500 });
   }
-}, { schema: auditSchema });
+}, { schema: auditSchema, roles: ['admin', 'partner', 'operator'] });
 
 export const GET = secureRoute(async (req: Request) => {
   try {
@@ -79,6 +79,6 @@ export const GET = secureRoute(async (req: Request) => {
     });
   } catch (error: any) {
     console.error("Audit fetch failed:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Gagal mengambil data audit." }, { status: 500 });
   }
-});
+}, { role: 'admin' });

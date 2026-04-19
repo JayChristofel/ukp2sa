@@ -23,6 +23,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 
 
 // const tailwindStyles = `
@@ -101,8 +109,14 @@ export default async function LocaleLayout({
 
   // VULN-002 FIX: Prevent full application dictionary exposure to public 
   // Strip sensitive admin/internal keys if the user doesn't have an established secure session
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const isMobileBuild = process.env.BUILD_MODE === 'mobile';
+  
+  let token: string | undefined;
+  if (!isMobileBuild) {
+    const cookieStore = await cookies();
+    token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  }
+  
   const session = token ? verifyJWT(token) : null;
   
   const isAuthorized = session && ["superadmin", "admin", "partner", "ngo"].includes(session.role);

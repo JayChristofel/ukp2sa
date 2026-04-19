@@ -2,8 +2,13 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.ukp2sa.app',
-  appName: 'UKP2SA',
-  webDir: 'out'
+  appName: 'ukp2sa',
+  webDir: 'out',
+  plugins: {
+    CapacitorCookies: {
+      enabled: true,
+    },
+  },
 };
 
 export default config;

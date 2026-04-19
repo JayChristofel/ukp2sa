@@ -207,7 +207,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   if (!mounted) return null;
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden font-display">
+    <div className="flex h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden font-display">
       {/* Sidebar */}
       <aside
         className={`${
@@ -330,7 +330,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-72 bg-white dark:bg-slate-950 shadow-2xl z-[10000] md:hidden flex flex-col"
+              className="fixed inset-y-0 left-0 w-[min(18rem,85vw)] bg-white dark:bg-slate-950 shadow-2xl z-[10000] md:hidden flex flex-col"
             >
               <div className="p-6 flex items-center justify-between border-b dark:border-slate-800">
                 <div className="flex items-center gap-3">
@@ -419,39 +419,49 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="h-20 border-b border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-lg flex items-center justify-between px-4 md:px-8 z-[8000]">
-          <div className="flex items-center gap-4">
+        <header className="h-16 md:h-20 border-b border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-lg flex items-center justify-between px-3 sm:px-6 md:px-8 z-[8000] shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+              className="md:hidden p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 active:scale-95 transition-transform"
             >
               <Menu size={20} />
             </button>
-            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500">
-              <span>Admin</span>
-              <ChevronRight size={14} />
-              <span className="text-slate-900 dark:text-white font-medium capitalize">
-                {pathname.split("/").pop() === "admin"
-                  ? dict.admin.command_center
-                  : pathname.split("/").pop()}
-              </span>
+
+            {/* Breadcrumbs - Smarter for Tablet */}
+            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500 min-w-0">
+              <span className="hidden lg:inline opacity-60">Admin</span>
+              <ChevronRight size={14} className="hidden lg:inline opacity-40" />
+              <div className="flex items-center gap-2 truncate">
+                <div className="size-1.5 rounded-full bg-primary-500 md:hidden" />
+                <span className="text-slate-900 dark:text-white font-bold capitalize truncate tracking-tight">
+                  {pathname.split("/").pop() === "admin"
+                    ? dict.admin.command_center
+                    : pathname.split("/").pop()?.replace(/-/g, " ")}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher />
-            <NotificationCenter />
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary-500 transition-all border border-slate-200 dark:border-slate-700"
-            >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 ml-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <LanguageSwitcher />
+              <button
+                onClick={toggleTheme}
+                className="hidden xs:flex p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-primary transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
+              >
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <NotificationCenter />
+            </div>
+
+            <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1 hidden lg:block" />
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 pl-2 focus:outline-none group">
-                  <div className="hidden sm:block text-right">
+                <button className="flex items-center gap-3 pl-2 focus:outline-none group active:scale-95 transition-transform">
+                  {/* Hide name on small tablets, show on large screens */}
+                  <div className="hidden lg:block text-right">
                     {isLoadingSession ? (
                       <div className="space-y-2">
                         <div className="h-4 w-20 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
@@ -459,19 +469,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                       </div>
                     ) : (
                       <>
-                        <p className="text-base font-bold dark:text-white leading-none group-hover:text-primary-500 transition-colors">
-                          {user?.name}
+                        <p className="text-sm font-black dark:text-white leading-none group-hover:text-primary-500 transition-colors uppercase tracking-tight">
+                          {user?.name?.split(" ")[0]}
                         </p>
-                        <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">
+                        <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1 font-bold">
                           {user?.role}
                         </p>
                       </>
                     )}
                   </div>
-                  <div className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 group-hover:border-primary-500/50 transition-all shadow-sm">
+                  <div className="size-10 sm:size-11 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700 group-hover:border-primary-500/50 transition-all shadow-sm overflow-hidden relative">
+                    <div className="absolute inset-0 bg-primary-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <User
                       size={20}
-                      className="text-slate-400 group-hover:text-primary-500 transition-colors"
+                      className="text-slate-400 group-hover:text-primary-500 transition-colors relative z-10"
                     />
                   </div>
                 </button>
@@ -506,7 +517,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-100/30 via-transparent to-transparent dark:from-primary-900/5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-100/30 via-transparent to-transparent dark:from-primary-900/5">
           {children}
         </main>
       </div>

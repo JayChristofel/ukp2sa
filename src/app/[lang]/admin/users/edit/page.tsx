@@ -1,9 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiService } from "@/services/unifiedService";
+import { toast } from "sonner";
 import { UserStatus, UserRole } from "@/lib/types";
+import { useI18n } from "@/app/[lang]/providers";
 
 export default function UserEditPage() {
   return (
@@ -20,16 +24,15 @@ export default function UserEditPage() {
 }
 
 function UserEditContent() {
+  const dict = useI18n();
+  const u_dict = dict?.users || {};
+  const common = dict?.common || {};
   const router = useRouter();
   const searchParams = useSearchParams();
+  const params = useParams();
+  const lang = (params?.lang as string) || "id";
   const id = searchParams.get("id") as string;
-
-  const [user, setUser] = useState<any>(null);
-  const [roles, setRoles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     name: "",
@@ -38,22 +41,21 @@ function UserEditContent() {
     status: UserStatus.ACTIVE,
   });
 
-  // Fetch user data + roles
-  const fetchData = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    try {
-      const [userRes, rolesRes] = await Promise.all([
-        fetch(`/api/admin/users?id=${id}`),
-        fetch("/api/admin/roles"),
-      ]);
+  // Fetch roles
+  const { data: rolesData } = useQuery({
+    queryKey: ["admin-roles-dropdown"],
+    queryFn: () => apiService.getRoles(),
+    staleTime: 60000,
+  });
+  const roles = rolesData?.data || [];
 
-      const userData = await userRes.json();
-      const rolesData = await rolesRes.json();
-
-      if (userRes.ok && userData.data) {
-        const found = userData.data;
-        setUser(found);
+  // Fetch user data
+  const { data: user, isLoading: loading, error: fetchError } = useQuery({
+    queryKey: ["admin-user", id],
+    queryFn: async () => {
+      const res = await apiService.getUsers(1, 1, id); // Use id as search term for precise fetch
+      const found = res.data?.find((u: any) => u.id === id);
+      if (found) {
         setForm({
           name: found.name || "",
           email: found.email || "",
@@ -61,45 +63,26 @@ function UserEditContent() {
           status: found.status || UserStatus.ACTIVE,
         });
       }
+      return found;
+    },
+    enabled: !!id,
+  });
 
-      setRoles(rolesData.data || []);
-    } catch (err) {
-      console.error("Fetch user data error:", err);
-      setError("Gagal memuat data user.");
-    } finally {
-      setLoading(false);
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => apiService.saveUser({ ...data, id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success(common.save_success || "Data user berhasil diperbarui!");
+      router.push(`/${lang}/admin/users`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Gagal memperbarui data user.");
     }
-  }, [id]);
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Update user via API
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const res = await fetch(`/api/admin/users?id=${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Gagal menyimpan perubahan.");
-      }
-
-      setSuccess("Data user berhasil diperbarui!");
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan.");
-    } finally {
-      setSaving(false);
-    }
+    updateMutation.mutate(form);
   };
 
   if (loading) {
@@ -134,23 +117,18 @@ function UserEditContent() {
         </button>
         <div>
           <h1 className="text-2xl md:text-3xl font-black dark:text-white uppercase tracking-tight">
-            Edit User
+            {u_dict.edit_title || "Edit User"}
           </h1>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-            {user.email}
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest leading-none mt-1">
+            {form.email}
           </p>
         </div>
       </div>
 
       {/* Alert Banners */}
-      {error && (
+      {fetchError && (
         <div className="flex items-center gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20">
-          <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{error}</p>
-        </div>
-      )}
-      {success && (
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
-          <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{success}</p>
+          <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{(fetchError as Error).message}</p>
         </div>
       )}
 
@@ -161,20 +139,20 @@ function UserEditContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Nama Lengkap
+              {common.full_name || "Nama Lengkap"}
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="w-full bg-slate-100 dark:bg-slate-800/80 border-none rounded-2xl px-6 py-4 text-sm font-bold dark:text-white focus:ring-2 focus:ring-primary-500/20 transition-all"
-              placeholder="Masukkan nama..."
+              placeholder={u_dict.name_placeholder || "Masukkan nama..."}
               required
             />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Alamat Email
+              {u_dict.email_label || "Alamat Email"}
             </label>
             <input
               type="email"
@@ -190,7 +168,7 @@ function UserEditContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Role Akses
+              {u_dict.role_access || "Role Akses"}
             </label>
             <select
               value={form.role}
@@ -199,26 +177,16 @@ function UserEditContent() {
               }
               className="w-full bg-slate-100 dark:bg-slate-800/80 border-none rounded-2xl px-6 py-4 text-sm font-bold dark:text-white focus:ring-2 focus:ring-primary-500/20 transition-all"
             >
-              {roles.length > 0 ? (
-                roles.map((role: any) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="public">Public</option>
-                  <option value="partner">Partner</option>
-                  <option value="operator">Operator</option>
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Superadmin</option>
-                </>
-              )}
+              {roles.map((role: any) => (
+                <option key={role.id} value={role.id}>
+                  {role.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
-              Status Akun
+              {u_dict.initial_status || "Status Akun"}
             </label>
             <select
               value={form.status}
@@ -227,9 +195,9 @@ function UserEditContent() {
               }
               className="w-full bg-slate-100 dark:bg-slate-800/80 border-none rounded-2xl px-6 py-4 text-sm font-bold dark:text-white focus:ring-2 focus:ring-primary-500/20 transition-all"
             >
-              <option value={UserStatus.ACTIVE}>Aktif</option>
-              <option value={UserStatus.INACTIVE}>Non-Aktif</option>
-              <option value={UserStatus.SUSPENDED}>Suspended</option>
+              <option value={UserStatus.ACTIVE}>{dict.admin?.status_active || "Aktif"}</option>
+              <option value={UserStatus.INACTIVE}>{dict.admin?.status_inactive || "Non-Aktif"}</option>
+              <option value={UserStatus.SUSPENDED}>{dict.admin?.status_suspended || "Suspended"}</option>
             </select>
           </div>
         </div>
@@ -237,15 +205,15 @@ function UserEditContent() {
         <div className="pt-4">
           <button
             type="submit"
-            disabled={saving}
-            className="w-full md:w-auto px-10 py-4 bg-primary-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-primary-600/20 hover:bg-primary-700 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={updateMutation.isPending}
+            className="w-full md:w-auto px-10 py-4 bg-primary text-white rounded-[2rem] font-black uppercase tracking-widest text-xs shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? (
+            {updateMutation.isPending ? (
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <Save size={18} />
             )}
-            {saving ? "Menyimpan..." : "Update User"}
+            {updateMutation.isPending ? common.saving || "Menyimpan..." : u_dict.update_btn || "Update User"}
           </button>
         </div>
       </form>

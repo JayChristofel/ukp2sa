@@ -122,7 +122,7 @@ export const PERMISSION_GROUPS: IPermissionGroup[] = [
   {
     name: 'Dashboard',
     permissions: [
-      { id: PERMISSIONS.DASHBOARD_READ, label: 'Akses Dashboard Utama', description: 'Melihat halaman utama command center' },
+      { id: PERMISSIONS.DASHBOARD_READ, label: 'Akses Dashboard Utama', description: 'Melihat halaman utama dasbor' },
     ]
   },
   {

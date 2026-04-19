@@ -229,6 +229,119 @@ export const MapPopupContent: React.FC<MapPopupContentProps> = ({ marker }) => {
     );
   }
 
+  if (type === "ngo") {
+    const relatedDamage = data.relatedDamage;
+    return (
+      <PopupWrapper>
+        <Header 
+          categoryLabel={(items.ngo || "Intervensi NGO").toUpperCase()} 
+          subtitle={data.parentOrganization?.[0]?.name || "NGO"} 
+        />
+        <MediaSection />
+        <LocationBlock />
+        
+        <SectionLabel>PROGRAM INTERVENSI</SectionLabel>
+        <div className="p-3">
+          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 leading-snug">
+            {data.interventionActivityDescription || "Tidak ada deskripsi"}
+          </p>
+          <div className="mt-2 flex items-center gap-1.5 p-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg">
+             <div className="size-4 rounded bg-blue-500 flex items-center justify-center shrink-0">
+                <Clock size={8} className="text-white" />
+             </div>
+             <span className="text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                {data.interventionClusterSubcluster || "UMUM"}
+             </span>
+          </div>
+        </div>
+
+        {relatedDamage && (
+          <>
+            <SectionLabel>DATA KERUSAKAN TERKAIT</SectionLabel>
+            <div className="p-2.5">
+              <div className="p-2.5 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800/50 rounded-xl">
+                 <h4 className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase mb-1">Impact Summary</h4>
+                 <div className="space-y-1">
+                    {relatedDamage.clusters?.slice(0, 2).map((c: any) => (
+                      <div key={c.key} className="flex justify-between items-center text-[9px] font-bold text-slate-600 dark:text-slate-400 border-b border-rose-100/30 pb-0.5">
+                        <span>{c.label}</span>
+                        <span className="text-rose-600 dark:text-rose-400">
+                          {c.metrics?.find((m: any) => m.key.includes('heavy'))?.value || 0} Unit
+                        </span>
+                      </div>
+                    ))}
+                 </div>
+              </div>
+            </div>
+          </>
+        )}
+      </PopupWrapper>
+    );
+  }
+
+  if (type === "r3p-damage") {
+    const relatedNgos = data.relatedNgos || [];
+    const houseCluster = data.clusters?.find((c: any) => c.key === "houses");
+    const roadCluster = data.clusters?.find((c: any) => c.key === "infrastructureTransportation");
+
+    return (
+      <PopupWrapper>
+        <Header 
+          categoryLabel={(items["r3p-damage"] || "Data Kerusakan R3P").toUpperCase()} 
+          subtitle={data.severity || "Kaji Cepat"} 
+        />
+        <MediaSection />
+        <LocationBlock />
+
+        <SectionLabel>RINGKASAN KERUSAKAN</SectionLabel>
+        <div className="p-2.5 grid grid-cols-2 gap-2">
+            <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+               <span className="text-[7px] font-black text-slate-400 uppercase block mb-0.5 tracking-widest leading-none">RUMAH RUSAK</span>
+               <span className="text-[10px] font-black text-rose-500">
+                  {houseCluster?.metrics?.find((m: any) => m.key === "house_damage_heavy")?.value || 0} <span className="text-[8px] text-slate-400">UNIT</span>
+               </span>
+            </div>
+            <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl">
+               <span className="text-[7px] font-black text-slate-400 uppercase block mb-0.5 tracking-widest leading-none">AKSES JALAN</span>
+               <span className="text-[10px] font-black text-amber-500">
+                  {roadCluster?.metrics?.find((m: any) => m.key.includes('heavy'))?.value || 0} <span className="text-[8px] text-slate-400">MTR</span>
+               </span>
+            </div>
+        </div>
+
+        {relatedNgos.length > 0 && (
+          <>
+            <SectionLabel>NGO AKTIF DI WILAYAH INI ({relatedNgos.length})</SectionLabel>
+            <div className="p-2.5">
+              <div className="space-y-1.5">
+                 {relatedNgos.slice(0, 3).map((ngo: any, idx: number) => (
+                   <div key={idx} className="flex items-center gap-2 p-1.5 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40 rounded-lg">
+                      <div className="size-5 rounded flex items-center justify-center bg-emerald-500 text-white font-black text-[8px]">
+                        {ngo.parentOrganization?.[0]?.name?.charAt(0) || "N"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 truncate uppercase">
+                            {ngo.parentOrganization?.[0]?.name}
+                         </p>
+                         <p className="text-[7px] text-emerald-600/70 dark:text-emerald-500/70 font-bold truncate">
+                            {ngo.interventionClusterSubcluster}
+                         </p>
+                      </div>
+                   </div>
+                 ))}
+                 {relatedNgos.length > 3 && (
+                   <p className="text-center text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
+                      + {relatedNgos.length - 3} NGO Lainnya
+                   </p>
+                 )}
+              </div>
+            </div>
+          </>
+        )}
+      </PopupWrapper>
+    );
+  }
+
   if (
     ["Kesehatan", "Pendidikan", "Pemerintahan", "Keagamaan", "police"].includes(
       type,

@@ -1,4 +1,6 @@
 import { banjirApi, banjirSumatraApi, tilikanApi } from "@/lib/apiClient";
+import { AuditLogResponse, CreateAuditLogInput } from "@/types/audit";
+import { FinancialRecord, ReportItem } from "@/types/entities";
 
 /**
  * Helper to safely parse JSON strings from API
@@ -16,11 +18,11 @@ const safeParse = (str: string | null | undefined) => {
  * Helper to ensure we get an array from API responses
  * Handles: [items], { data: [items] }, { data: { data: [items] } }
  */
-const ensureArray = (res: unknown): any[] => {
-  if (Array.isArray(res)) return res;
+const ensureArray = <T = any>(res: unknown): T[] => {
+  if (Array.isArray(res)) return res as T[];
   if (!res || typeof res !== "object") return [];
 
-  const r = res as Record<string, any>;
+  const r = res as Record<string, unknown>;
   const targets = [
     r.data,
     r.results,
@@ -28,19 +30,20 @@ const ensureArray = (res: unknown): any[] => {
     r.answers,
     r.laporans,
     r.reports,
-    r.data?.items,
-    r.data?.data,
-    r.data?.answers,
+    (r.data as any)?.items,
+    (r.data as any)?.data,
+    (r.data as any)?.answers,
   ];
   for (const target of targets) {
-    if (Array.isArray(target)) return target;
+    if (Array.isArray(target)) return target as T[];
   }
 
   return [];
 };
 
 // Limit per page — Increased for full dashboard coverage
-const PAGE_LIMIT = 500;
+// Limit per page — Adjusted to 100 as per technical spec
+const PAGE_LIMIT = 100;
 
 export const apiService = {
   // --- BANJIR SUMATRA ENDPOINTS ---
@@ -51,17 +54,17 @@ export const apiService = {
       const supabase = createClient();
       
       const [localRes, externalRes] = await Promise.allSettled([
-        supabase.from('reports').select('*').eq('category', 'Bencana Banjir').limit(PAGE_LIMIT),
+        supabase.from('reports').select('*').eq('category', 'SAR').limit(PAGE_LIMIT),
         banjirApi.get(`/missing-person`, { params: { page, limit: PAGE_LIMIT } })
       ]);
 
-      let combined = [];
+      let combined: any[] = [];
       if (localRes.status === 'fulfilled' && localRes.value.data) {
         combined = [...localRes.value.data];
       }
 
       if (externalRes.status === 'fulfilled') {
-        const items = ensureArray((externalRes.value as any).data);
+        const items = ensureArray<any>((externalRes.value as any).data);
         const localIds = new Set(combined.map(r => String(r.id)));
         const filteredApi = items.filter(r => !localIds.has(String(r.id)));
         const externalItems = filteredApi.map((item) => ({
@@ -84,7 +87,7 @@ export const apiService = {
       const { data } = await (banjirApi.get(`/tend-point`, {
         params: { page, limit: PAGE_LIMIT },
       }) as any);
-      const items = ensureArray(data);
+      const items = ensureArray<any>(data);
       return items.map((item) => ({
         ...item,
         detail: safeParse(item.detail),
@@ -96,139 +99,148 @@ export const apiService = {
 
   getPoliceOffices: async (page = 1) => {
     try {
-      const { data } = await (banjirApi.get(`/police-office`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
-    } catch {
-      return [];
-    }
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('police_offices').select('*').limit(PAGE_LIMIT);
+      if (localData && localData.length > 0) return localData;
+
+      const { data } = await (banjirApi.get(`/police-office`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data);
+    } catch { return []; }
   },
   
   getNgo: async (page = 1) => {
     try {
-      const { data } = await (banjirSumatraApi.get(`/ngo`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
-    } catch {
-      return [];
-    }
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('ngo_data').select('*').limit(PAGE_LIMIT);
+      if (localData && localData.length > 0) return localData;
+
+      const { data } = await (banjirSumatraApi.get(`/ngo`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data);
+    } catch { return []; }
   },
 
   getR3P: async (page = 1) => {
     try {
-      const { data } = await (banjirSumatraApi.get(`/r3p`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
-    } catch {
-      return [];
-    }
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('r3p_data').select('*').limit(PAGE_LIMIT);
+      if (localData && localData.length > 0) return localData;
+
+      const { data } = await (banjirSumatraApi.get(`/r3p`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data);
+    } catch { return []; }
   },
 
   getR3PByRegency: async (page = 1) => {
     try {
-      const { data } = await (banjirSumatraApi.get(`/r3p`, {
-        params: { group_by: "regency", page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
-    } catch {
-      return [];
-    }
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      // Try local fetch first
+      const { data: localData } = await supabase.from('r3p_data').select('*').limit(PAGE_LIMIT);
+      if (localData && localData.length > 0) return localData;
+
+      const { data } = await (banjirSumatraApi.get(`/r3p`, { params: { group_by: "regency", page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data);
+    } catch { return []; }
   },
 
   getPosko: async (page = 1) => {
     try {
-      const { data } = await (banjirApi.get(`/posko`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
-    } catch {
-      return [];
-    }
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('poskos').select('*').limit(PAGE_LIMIT);
+      if (localData && localData.length > 0) return localData;
+
+      const { data } = await (banjirApi.get(`/posko`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data);
+    } catch { return []; }
   },
 
   getGeneralFacilities: async (page = 1) => {
     try {
-      const { data } = await (banjirApi.get(`/general-facilities`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      const items = ensureArray(data);
-      // Auto-tag facilities for better KPI categorization
-      return items.map(f => ({
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('facilities').select('*').eq('category', 'General').limit(PAGE_LIMIT);
+
+      const mapper = (f: any) => ({
         ...f,
         isSchool: (f.name || "").match(/SD|SMP|SMA|SMK|Sekolah|Universitas|Dayah/i),
         isHealth: (f.name || "").match(/Klinik|Puskesmas|RSUD|Rumah Sakit|Apotek/i),
         isDAS: (f.name || "").match(/DAS|Sungai|Krueng|Drainase|Bendungan/i)
-      }));
-    } catch {
-      return [];
-    }
+      });
+
+      if (localData && localData.length > 0) return localData.map(mapper);
+
+      const { data } = await (banjirApi.get(`/general-facilities`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data).map(mapper);
+    } catch { return []; }
   },
 
   getPublicFacilities: async (page = 1) => {
     try {
-      const { data } = await (banjirApi.get(`/public-facilities`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      return ensureArray(data);
-    } catch {
-      return [];
-    }
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('facilities').select('*').eq('category', 'Public').limit(PAGE_LIMIT);
+      if (localData && localData.length > 0) return localData;
+
+      const { data } = await (banjirApi.get(`/public-facilities`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data);
+    } catch { return []; }
   },
 
   getVillageDistribution: async (page = 1) => {
     try {
-      const { data } = await (banjirApi.get(`/village-distribution`, {
-        params: { page, limit: PAGE_LIMIT },
-      }) as any);
-      const items = ensureArray(data);
-      return items.map((item) => {
+      const { createClient } = await import("@/lib/client");
+      const supabase = createClient();
+      const { data: localData } = await supabase.from('village_distribution').select('*').limit(PAGE_LIMIT);
+
+      const mapper = (item: any) => {
         const census = safeParse(item.censusDetail) || {};
         return {
           ...item,
           censusDetail: census,
-          // Standardize fields aggressively for Rice Field (Sawah), DAS, etc.
-          recoveredArea: Number(census.recoveredArea || census.luas_pulih || item.recoveredArea || item.total_recovered || item.sawah_pulih || item.luas_sawah || 0),
-          population: Number(census.population || item.population || item.jumlah_penduduk || 0),
-          dasProgress: Number(census.dasProgress || census.progres_das || item.dasProgress || item.das_restoration || item.progres_sungai || 0)
+          recoveredArea: Number(census.recoveredArea || item.recovered_area || 0),
+          population: Number(census.population || item.population || 0),
+          dasProgress: Number(census.dasProgress || item.das_progress || 0)
         };
-      });
-    } catch {
-      return [];
-    }
+      };
+
+      if (localData && localData.length > 0) return localData.map(mapper);
+
+      const { data } = await (banjirApi.get(`/village-distribution`, { params: { page, limit: PAGE_LIMIT } }) as any);
+      return ensureArray<any>(data).map(mapper);
+    } catch { return []; }
   },
 
-  getRegencyFundAllocation: async (page = 1) => {
+  getRegencyFundAllocation: async (page = 1): Promise<FinancialRecord[]> => {
     try {
       const { createClient } = await import("@/lib/client");
       const supabase = createClient();
 
-      const [externalRes, localRes] = await Promise.allSettled([
-        banjirApi.get(`/regency-fund-allocation`, { params: { page, limit: PAGE_LIMIT } }),
-        supabase.from('financial_records').select('*').limit(PAGE_LIMIT)
-      ]);
+      // Priority: Local data from Supabase (Populated by Cron)
+      const { data: localData } = await supabase
+        .from('financial_records')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(PAGE_LIMIT);
 
-      let combined: any[] = [];
-      
       const mapFin = (item: any) => ({
         ...item,
-        realization: Number(item.realization || item.realisasi || item.amount || item.amount_realization || item.total_dana || item.realization_total || 0),
-        percentage: Number(item.percentage || item.persentase || item.progress || item.penyerapan || item.absorption || 0),
-        programName: item.programName || item.program_name || item.kabupatenKota || item.kabupaten_kota || item.kabupaten || "Program Strategis Daerah"
+        realization: Number(item.realization || item.realisasi || item.amount || 0),
+        percentage: Number(item.percentage || item.persentase || 0),
+        programName: item.programName || item.program_name || "Program Strategis Daerah"
       });
 
-      if (localRes.status === 'fulfilled' && localRes.value.data) {
-        combined = [...localRes.value.data.map(mapFin)];
+      if (localData && localData.length > 0) {
+        return localData.map(mapFin);
       }
 
-      if (externalRes.status === 'fulfilled') {
-        const apiItems = ensureArray((externalRes.value as any).data);
-        combined = [...combined, ...apiItems.map(mapFin)];
-      }
-
-      return combined;
+      // Fallback: If local is empty, try live API once
+      const externalRes = await banjirApi.get(`/regency-fund-allocation`, { params: { page, limit: PAGE_LIMIT } });
+      const apiItems = ensureArray<any>(externalRes.data);
+      return apiItems.map(mapFin);
     } catch {
       return [];
     }
@@ -236,7 +248,7 @@ export const apiService = {
 
   // --- TILIKAN / SUPERDASH ENDPOINTS ---
 
-  getReportAnswers: async (limit = 100) => {
+  getReportAnswers: async (limit = 100): Promise<ReportItem[]> => {
     try {
       const { createClient } = await import("@/lib/client");
       const supabase = createClient();
@@ -247,15 +259,20 @@ export const apiService = {
       ]);
 
       let combined: any[] = [];
+      const mapReport = (r: any): ReportItem => ({
+        ...r,
+        createdAt: r.createdAt || r.created_at || r.timestamp || new Date().toISOString()
+      });
+
       if (localRes.status === 'fulfilled' && localRes.value.data) {
-        combined = [...localRes.value.data];
+        combined = [...localRes.value.data.map(mapReport)];
       }
 
       if (apiRes.status === 'fulfilled') {
-        const apiItems = ensureArray((apiRes.value as any).data);
+        const apiItems = ensureArray<any>((apiRes.value as any).data);
         const localIds = new Set(combined.map(r => String(r.id)));
         const filteredApi = apiItems.filter(r => !localIds.has(String(r.id)));
-        combined = [...combined, ...filteredApi];
+        combined = [...combined, ...filteredApi.map(mapReport)];
       }
 
       return combined;
@@ -333,45 +350,46 @@ export const apiService = {
     try {
       const { data } = await (tilikanApi.get(`/tanggapi/answers/${id}`) as any);
       return data;
-    } catch (e) {
+    } catch {
       return null;
     }
   },
 
   // --- ADMIN & AUDIT SYSTEM ---
 
-  getAuditLogs: async (page = 1, limit = 100, user = "") => {
+  getAuditLogs: async (page = 1, limit = 100, user = ""): Promise<AuditLogResponse> => {
     try {
       const params = new URLSearchParams({ page: String(page), limit: String(limit) });
       if (user) params.set("user", user);
       const res = await fetch(`/api/admin/audit?${params}`);
-      if (!res.ok) return { data: [], total: 0 };
+      if (!res.ok) return { data: [], stats: { totalEvents: 0, securityGaps: 0, activeSessions: 0, integrity: { totalScore: 0, dimensions: { completeness: 0, accuracy: 0, consistency: 0 } } } };
       const data = await res.json();
       return data;
     } catch {
-      return { data: [], total: 0 };
+      return { data: [], stats: { totalEvents: 0, securityGaps: 0, activeSessions: 0, integrity: { totalScore: 0, dimensions: { completeness: 0, accuracy: 0, consistency: 0 } } } };
     }
   },
 
-  createAuditLog: async (logData: {
-    action: string;
-    module: string;
-    details: string;
-    level?: "info" | "warn" | "error";
-    user?: string;
-    diff?: any;
-  }) => {
+  createAuditLog: async (logData: CreateAuditLogInput) => {
     try {
-      await fetch(`/api/admin/audit`, {
+      const response = await fetch(`/api/admin/audit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...logData,
-          ua: typeof window !== "undefined" ? window.navigator.userAgent : "Server",
+          ua: logData.ua || (typeof window !== "undefined" ? window.navigator.userAgent : "Server"),
         }),
       });
-    } catch (e) {
-      console.error("Failed to create audit log", e);
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn("⚠️ Audit log rate limited (429)");
+        } else {
+          console.error(`🔴 Audit log failed with status: ${response.status}`);
+        }
+      }
+    } catch (error) {
+      console.error("❌ Network error while creating audit log:", error);
     }
   },
 
@@ -383,7 +401,7 @@ export const apiService = {
       const res = await fetch(`/api/admin/users?${params}`);
       if (!res.ok) return { data: [], total: 0 };
       return res.json();
-    } catch (e) {
+    } catch {
       return { data: [], total: 0 };
     }
   },
@@ -391,7 +409,20 @@ export const apiService = {
     try {
       const res = await fetch(`/api/admin/users?id=${id}`, { method: "DELETE" });
       return res.json();
-    } catch (e) {
+    } catch {
+      return { error: "Network error" };
+    }
+  },
+
+  saveUser: async (userData: any) => {
+    try {
+      const res = await fetch(`/api/admin/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
+      return res.json();
+    } catch {
       return { error: "Network error" };
     }
   },
@@ -400,7 +431,7 @@ export const apiService = {
       const res = await fetch(`/api/admin/roles`);
       if (!res.ok) return [];
       return res.json();
-    } catch (e) {
+    } catch {
       return [];
     }
   },
@@ -413,6 +444,8 @@ export const apiService = {
       return { error: "Network error" };
     }
   },
+
+  // --- DATA SYNCHRONIZATION (Background Sync) ---
 
   saveRole: async (roleData: any) => {
     try {

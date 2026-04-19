@@ -56,4 +56,5 @@ const getHandler = async (req: Request) => {
   }
 };
 
-export const GET = secureRoute(getHandler);
+// Semua handler admin blog wajib token valid + minimal operator buat baca, admin buat tulis
+export const GET = secureRoute(getHandler, { roles: ['admin', 'partner', 'operator'], limit: 50 });

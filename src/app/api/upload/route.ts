@@ -1,35 +1,13 @@
 import { NextResponse } from "next/server";
-import { verifyJWT, SESSION_COOKIE_NAME } from "@/lib/jwt";
-import { cookies } from "next/headers";
+import { secureRoute } from "@/lib/api-middleware";
 import crypto from "crypto";
 
 /**
  * POST /api/upload — Multi-file upload ke R2 Bucket menggunakan Cloudflare API v4.
  * Menggunakan native fetch (Zero-SDK) untuk optimasi bundle size.
  */
-export async function POST(request: Request) {
+export const POST = secureRoute(async (request: Request) => {
   try {
-    // --- AUTH CHECK ---
-    let sessionUser = null;
-
-    const authHeader = request.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-      sessionUser = verifyJWT(token);
-    }
-
-    if (!sessionUser) {
-      const cookieStore = await cookies();
-      const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-      if (token) {
-        sessionUser = verifyJWT(token);
-      }
-    }
-
-    if (!sessionUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     // --- PARSE FORM DATA ---
     const formData = await request.formData();
     const files = formData.getAll("files") as File[];
@@ -46,13 +24,13 @@ export async function POST(request: Request) {
     const endpoint = process.env.R2_ENDPOINT || "";
     // Ekstrak Account ID dari endpoint: https://<account_id>.r2.cloudflarestorage.com
     const accountIdMatch = endpoint.match(/https:\/\/(.+)\.r2/);
-    const accountId = accountIdMatch ? accountIdMatch[1] : "83af379993f439654a1dbf07d9666bea";
+    const accountId = accountIdMatch ? accountIdMatch[1] : null;
     
     const bucketName = process.env.R2_BUCKET_NAME;
     const apiToken = process.env.R2_TOKEN_VALUE;
     const cdnDomain = process.env.R2_CDN_DOMAIN?.replace(/\/$/, "");
 
-    if (!apiToken || !bucketName || !cdnDomain) {
+    if (!apiToken || !bucketName || !cdnDomain || !accountId) {
       console.error("[UPLOAD] Configuration Error: Missing R2 env variables");
       return NextResponse.json({ error: "Storage configuration invalid" }, { status: 500 });
     }
@@ -112,4 +90,4 @@ export async function POST(request: Request) {
       error: "Internal server error during upload" 
     }, { status: 500 });
   }
-}
+}, { limit: 10 }); // Limit upload attempts

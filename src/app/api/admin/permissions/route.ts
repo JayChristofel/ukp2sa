@@ -8,7 +8,7 @@ const getHandler = async () => {
     const supabase = await createClient();
     const { data: permissions, error } = await supabase
       .from('permissions')
-      .select('*')
+      .select('id, name, description, module')
       .order('module', { ascending: true })
       .order('name', { ascending: true });
 
@@ -38,37 +38,6 @@ const getHandler = async () => {
   }
 };
 
-/** POST /api/admin/permissions — Create or Update Permission */
-const postHandler = async (req: Request) => {
-  try {
-    const body = await req.json();
-    const { id, name, module, description } = body;
-
-    if (!id || !name || !module) {
-      return NextResponse.json({ error: "ID, Name, and Module are required" }, { status: 400 });
-    }
-
-    const supabase = await createClient();
-    const { data: permission, error } = await supabase
-      .from('permissions')
-      .upsert({ 
-        id, 
-        name, 
-        module, 
-        description,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    return NextResponse.json({ data: permission });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-};
-
 /** DELETE /api/admin/permissions — Remove Permission */
 const deleteHandler = async (req: Request) => {
   try {
@@ -93,7 +62,36 @@ const deleteHandler = async (req: Request) => {
   }
 };
 
-// Semua handler admin permissions wajib token valid
-export const GET = secureRoute(getHandler);
-export const POST = secureRoute(postHandler);
-export const DELETE = secureRoute(deleteHandler);
+// Semua handler admin permissions wajib token valid + role admin
+export const GET = secureRoute(getHandler, { role: 'admin', limit: 20 });
+export const POST = secureRoute(async (req: Request, { body }: any) => {
+  try {
+    const { id, name, module, description } = body;
+
+    if (!id || !name || !module) {
+      return NextResponse.json({ success: false, error: "ID, Name, and Module are required" }, { status: 400 });
+    }
+
+    const supabase = await createClient();
+    const { data: permission, error } = await supabase
+      .from('permissions')
+      .upsert({ 
+        id, 
+        name, 
+        module, 
+        description,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: permission });
+  } catch (error: any) {
+    console.error("Save Permission Error:", error);
+    return NextResponse.json({ success: false, error: "Gagal menyimpan data izin akses." }, { status: 500 });
+  }
+}, { role: 'admin' });
+
+export const DELETE = secureRoute(deleteHandler, { role: 'admin' });

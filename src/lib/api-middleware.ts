@@ -3,17 +3,20 @@ import { verifyJWT, SESSION_COOKIE_NAME } from "@/lib/jwt";
 import { cookies } from "next/headers";
 import { ZodSchema } from "zod";
 import { rateLimit } from "./rate-limit";
+import { AuditService } from "@/services/AuditService";
 
 export interface SecureRouteOptions {
   permission?: string;
-  role?: string;
+  role?: string; // Legacy support
+  roles?: string[]; // New: support multiple roles
   schema?: ZodSchema;
   limit?: number; // Custom rate limit
   windowMs?: number; // Custom window
+  isPublic?: boolean; // New: allow public access with rate limiting
 }
 
 export function secureRoute(
-  handler: (req: Request, context: { session: any; body?: any }) => Promise<NextResponse>,
+  handler: (req: Request, context: { session: { user: any }; body?: any }) => Promise<NextResponse>,
   options: SecureRouteOptions = {}
 ) {
   return async (req: Request) => {
@@ -42,34 +45,44 @@ export function secureRoute(
         });
       }
 
-      // 1. Session check (Custom JWT fallback)
+      // 1. Session check (Custom JWT) — Single cookie read, cached verification
       let sessionUser = null;
 
-      // Cek header Authorization (Mobile) dulu
+      // Cek header Authorization (Mobile/Postman) dulu
       const authHeader = req.headers.get("authorization");
       if (authHeader?.startsWith("Bearer ")) {
         const token = authHeader.split(" ")[1];
-        sessionUser = verifyJWT(token);
+        sessionUser = verifyJWT(token); // Now cached in jwt.ts LRU
       }
 
-      // Kalo gak ada lewat header, cek lewat cookie (Web)
+      // Kalo gak ada lewat header, cek lewat cookie (Web Dashboard)
       if (!sessionUser) {
         const cookieStore = await cookies();
         const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
         if (token) {
-          sessionUser = verifyJWT(token);
+          sessionUser = verifyJWT(token); // Now cached in jwt.ts LRU
         }
       }
 
-      const session = sessionUser ? { user: sessionUser } : null;
-
-      if (!session || !session.user) {
+      // PUBLIC BYPASS Logic
+      if (!sessionUser && !options.isPublic) {
         return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
       }
 
-      // 2. Role/Permission check (optional - to be implemented fully with RBAC logic)
-      if (options.role && session.user.role !== options.role && session.user.role !== 'superadmin') {
-        return NextResponse.json({ success: false, error: "Forbidden: Role mismatch" }, { status: 403 });
+      const session = sessionUser ? { user: sessionUser } : { user: null };
+
+      // 2. Role check (Strict) - Only if NOT public
+      if (!options.isPublic) {
+        const allowedRoles = options.roles || (options.role ? [options.role] : []);
+        if (allowedRoles.length > 0) {
+          const hasRole = allowedRoles.includes(session.user?.role) || session.user?.role === 'superadmin';
+          if (!hasRole) {
+            return NextResponse.json({ 
+              success: false, 
+              error: "Forbidden: You don't have the required role to access this resource" 
+            }, { status: 403 });
+          }
+        }
       }
 
       // 3. Schema Validation
@@ -91,6 +104,21 @@ export function secureRoute(
       return await handler(req, { session, body });
     } catch (error: any) {
       console.error("[API ERROR]", error);
+      
+      // Auto-log failure to Audit (Technical SITREP)
+      // AuditService sekarang static import — no dynamic import overhead
+      try {
+        await AuditService.log({
+          action: "API_CRASH",
+          module: "SYSTEM",
+          details: `Endpoint ${req.method} ${req.url} failed: ${error.message}`,
+          level: "error",
+          meta: { stack: process.env.NODE_ENV === 'development' ? error.stack : undefined }
+        });
+      } catch (logErr) {
+        console.error("Failed to log API crash:", logErr);
+      }
+
       return NextResponse.json({ success: false, error: "Terjadi kesalahan pada server." }, { status: 500 });
     }
   };

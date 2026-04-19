@@ -4,7 +4,6 @@ const isMobileBuild = process.env.BUILD_MODE === 'mobile';
 const isVercel = !!process.env.VERCEL;
 
 const nextConfig: NextConfig = {
-
   // Paket yang butuh native Node.js runtime — jangan di-bundle webpack/turbopack
   serverExternalPackages: ["nodemailer"],
 
@@ -58,12 +57,28 @@ const nextConfig: NextConfig = {
   // Power-up webpack/turbopack buat handle library spesifik
   transpilePackages: ["lucide-react", "recharts"],
 
+  // Expose env vars to client
+  env: {
+    NEXT_PUBLIC_BUILD_MODE: process.env.BUILD_MODE || 'web',
+  },
+
   // Disable X-Powered-By header (Pentest M2)
   poweredByHeader: false,
+};
 
-  async headers() {
-    if (isMobileBuild) return [];
-    
+// ONLY add server-side features if NOT a mobile build (static export)
+// This SILENCES the Next.js warning successfully
+if (!isMobileBuild) {
+  nextConfig.rewrites = async () => {
+    return [
+      {
+        source: '/api/v1/external-banjir/:path*',
+        destination: 'https://api.banjirsumatra.id/api/v1/:path*',
+      },
+    ];
+  };
+
+  nextConfig.headers = async () => {
     return [
       {
         source: '/(.*)',
@@ -85,12 +100,8 @@ const nextConfig: NextConfig = {
             value: 'max-age=31536000; includeSubDomains; preload',
           },
           {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.google-analytics.com https://static.cloudflareinsights.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://diswatchapi.tilikan.id https://superdashapi.tilikan.id https://api.banjirsumatra.id https://www.google-analytics.com https://static.cloudflareinsights.com; frame-ancestors 'none'; object-src 'none';",
-          },
-          {
             key: 'Access-Control-Allow-Origin',
-            value: 'https://www.ukp2sa.id', // Pentest H1 Fix
+            value: 'https://ukp2sa.id',
           },
           {
             key: 'Access-Control-Allow-Methods',
@@ -112,10 +123,22 @@ const nextConfig: NextConfig = {
             key: 'Cache-Control',
             value: 'no-store, no-cache, must-revalidate, proxy-revalidate',
           },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin',
+          },
         ],
       },
     ];
-  },
-};
+  };
+}
 
 export default nextConfig;

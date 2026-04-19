@@ -9,6 +9,9 @@ import { useAuditLogger } from "@/hooks/useAuditLogger";
 import { useNotificationStore } from "@/hooks/useNotificationStore";
 import { useEffect } from "react";
 import { adminUserSchema } from "@/lib/validations";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiService } from "@/services/unifiedService";
+import { toast } from "sonner";
 
 export default function UserAddPage() {
   const dict = useI18n();
@@ -43,7 +46,15 @@ function UserAddContent() {
     );
   }, [logActivity]);
 
-  const roles: any = []; // auto-cleaned
+  const queryClient = useQueryClient();
+
+  // --- DATA FETCHING ---
+  const { data: rolesData } = useQuery({
+    queryKey: ["admin-roles-dropdown"],
+    queryFn: () => apiService.getRoles(),
+    staleTime: 60000,
+  });
+  const roles = rolesData?.data || [];
 
   const [form, setForm] = useState({
     name: "",
@@ -53,13 +64,29 @@ function UserAddContent() {
     avatar: "",
   });
 
-  const addMutation: any = {
-    mutate: () => {},
-    mutateAsync: async () => {},
-    isPending: false,
-    isLoading: false,
-    data: [],
-  }; // auto-cleaned
+  const addMutation = useMutation({
+    mutationFn: (data: any) => apiService.saveUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success(dict.common?.save_success || "User berhasil didaftarkan!");
+      logActivity(
+        "USER_CREATED",
+        "SYSTEM",
+        `User enrolled new account: ${form.name} (${form.email})`,
+      );
+      addNotification({
+        title: dict.users?.notif_created_title || "User Baru Terdaftar",
+        description: `${dict.users?.notif_created_desc || 'Akun'} "${form.name}" ${dict.users?.notif_created_desc_suffix || 'telah berhasil didaftarkan.'}`,
+        type: "system",
+        priority: "medium",
+        createdAt: new Date().toISOString()
+      });
+      router.push(`/${lang}/admin/users`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Gagal mendaftarkan user.");
+    }
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,23 +99,11 @@ function UserAddContent() {
     });
 
     if (!validation.success) {
-      alert(validation.error.issues[0].message);
+      toast.error(validation.error.issues[0].message);
       return;
     }
 
     addMutation.mutate(form);
-    logActivity(
-      "USER_CREATED",
-      "SYSTEM",
-      `User enrolled new account: ${form.name} (${form.email})`,
-    );
-    addNotification({
-      title: "User Baru Terdaftar",
-      description: `Akun "${form.name}" telah berhasil didaftarkan ke sistem operasional.`,
-      type: "system",
-      priority: "medium",
-    });
-    router.push(`/${lang}/admin/users`);
   };
 
   return (

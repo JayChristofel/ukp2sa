@@ -156,3 +156,5 @@ export const Input: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = ({
     />
   );
 };
+
+export * from "./switch";

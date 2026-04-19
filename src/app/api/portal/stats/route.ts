@@ -3,15 +3,21 @@ import { createClient } from "@/lib/server";
 import { secureRoute } from "@/lib/api-middleware";
 
 /** GET /api/portal/stats — Dashboard stats untuk portal mitra (protected) */
-const getHandler = async () => {
+const getHandler = async (req: Request, { session }: any) => {
   try {
     const supabase = await createClient();
+    const isPartner = session.user.role === 'partner';
+    const instansiId = session.user.instansiId;
 
-    // Fetch Reports Stats (by status)
-    const { data: reportRows, error: reportError } = await supabase
-      .from('reports')
-      .select('status');
+    // 1. Fetch Reports Stats
+    let reportQuery = supabase.from('reports').select('status');
     
+    // Isolation logic: Partner cuma liat aduan di wilayah/instansi mereka
+    if (isPartner && instansiId) {
+      reportQuery = reportQuery.eq('instansi_id', instansiId);
+    }
+    
+    const { data: reportRows, error: reportError } = await reportQuery;
     if (reportError) throw reportError;
 
     const reportCounts = (reportRows || []).reduce((acc: any, curr) => {
@@ -19,11 +25,17 @@ const getHandler = async () => {
       return acc;
     }, {} as Record<string, number>);
 
-    // Fetch Financial Stats (grouped by program_name)
-    const { data: financialRows, error: financialError } = await supabase
+    // 2. Fetch Financial Stats
+    let financialQuery = supabase
       .from('financial_records')
       .select('program_name, allocation, realization, percentage, instansi_id');
 
+    // Isolation logic: Partner cuma liat budget instansi mereka
+    if (isPartner && instansiId) {
+      financialQuery = financialQuery.eq('instansi_id', instansiId);
+    }
+
+    const { data: financialRows, error: financialError } = await financialQuery;
     if (financialError) throw financialError;
 
     const programsMap = (financialRows || []).reduce((acc: any, curr) => {
@@ -56,7 +68,7 @@ const getHandler = async () => {
         name,
         allocation: programsMap[name].allocation,
         realization: programsMap[name].realization,
-        progress: programsMap[name].progress / programsMap[name].count,
+        progress: programsMap[name].count > 0 ? programsMap[name].progress / programsMap[name].count : 0,
       })),
       partners: Object.keys(partnersMap).map(id => ({
         id,
@@ -65,10 +77,11 @@ const getHandler = async () => {
       }))
     };
 
-    return NextResponse.json({ status: "success", data: stats });
+    return NextResponse.json({ success: true, data: stats });
   } catch (error: any) {
-    return NextResponse.json({ status: "error", message: error.message }, { status: 500 });
+    console.error("Portal Stats Error:", error);
+    return NextResponse.json({ success: false, error: "Gagal mengambil data statistik portal." }, { status: 500 });
   }
 };
 
-export const GET = secureRoute(getHandler);
+export const GET = secureRoute(getHandler, { roles: ['admin', 'partner', 'operator'], limit: 30 });

@@ -114,13 +114,13 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-50 dark:bg-slate-950 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 overflow-hidden">
       {/* Scrollable Content */}
-      <main className="flex-1 overflow-y-auto pb-24">{children}</main>
+      <main className="flex-1 overflow-y-auto pb-28">{children}</main>
 
       {/* Bottom Tab Bar */}
       <nav className="fixed bottom-0 left-0 right-0 lg:hidden z-[5000] pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-6 mb-6 h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/20 dark:border-slate-800/50 rounded-[2.5rem] shadow-2xl flex items-center justify-around px-4">
+        <div className="mx-3 sm:mx-6 mb-3 sm:mb-6 h-16 sm:h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/20 dark:border-slate-800/50 rounded-2xl sm:rounded-[2.5rem] shadow-2xl flex items-center justify-around px-2 sm:px-4">
           {tabs.map((tab, index) => {
             const getIsActive = () => {
               if (tab.path.includes("#")) {
@@ -146,7 +146,7 @@ const MobileLayout: React.FC<MobileLayoutProps> = ({ children }) => {
                     }
                   }}
                   className={cn(
-                    "relative -top-8 size-16 rounded-2xl flex items-center justify-center text-white shadow-glow border-4 border-slate-50 dark:border-slate-950 active:scale-90 transition-all z-[100]",
+                    "relative -top-5 sm:-top-8 size-12 sm:size-16 rounded-xl sm:rounded-2xl flex items-center justify-center text-white shadow-glow border-4 border-slate-50 dark:border-slate-950 active:scale-90 transition-all z-[100]",
                     isActive
                       ? "bg-primary-500 shadow-primary-500/40"
                       : "bg-slate-800 dark:bg-slate-700 shadow-slate-900/40",

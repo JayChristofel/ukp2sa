@@ -51,7 +51,7 @@ export const PartnersSection: React.FC = () => {
     (p: { id: string; name: string }) => ({
       ...p,
       ...(PARTNER_META[p.id] || { color: "text-primary", bg: "bg-primary/5" }),
-      imageSrc: "https://resilient-pixie-e74a8e.netlify.app/Logo%20MM.png",
+      imageSrc: "/assets/Logo MM.png",
     }),
   );
 

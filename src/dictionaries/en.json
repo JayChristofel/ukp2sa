@@ -84,6 +84,15 @@
     "prev": "Prev",
     "next": "Next"
   },
+  "permission": {
+    "verifying_access": "VERIFYING ACCESS...",
+    "session_expired": "SESSION EXPIRED",
+    "session_expired_desc": "Please login again to continue.",
+    "access_denied": "ACCESS DENIED",
+    "access_denied_role": "Role \"{role}\" does not have access to Admin Dashboard.",
+    "insufficient_permission": "INSUFFICIENT PERMISSION",
+    "insufficient_permission_desc": "You need \"{permission}\" permission to access this page. Contact administrator to gain access."
+  },
   "notification": {
     "title": "Notifications",
     "unread": "Unread",
@@ -591,7 +600,36 @@
     "send_reset": "Send Reset Link",
     "update_password": "Update Password",
     "register_title": "Create Account",
-    "register_subtitle": "Join the Aceh Recovery Ecosystem"
+    "register_subtitle": "Join the Aceh Recovery Ecosystem",
+    "full_name": "Full Name",
+    "confirm_password": "Confirm Password",
+    "agree_terms": "I agree with the",
+    "terms_policy": "Registry Policy & Security Protocols",
+    "error_detected": "Error Detected",
+    "success_login": "Success! Redirecting...",
+    "success_register": "Account created! Please sign in.",
+    "identifying": "IDENTIFYING...",
+    "verifying": "VERIFYING...",
+    "link_deployed": "LINK DEPLOYED",
+    "check_inbox": "Check your secure inbox or spam folder.",
+    "auth_protocol_active": "AUTHENTICATION PROTOCOL ACTIVE",
+    "resend_transmission": "RESEND TRANSMISSION",
+    "recovery_mode": "RECOVERY MODE",
+    "lost_access_desc": "Lost access? We'll help you secure it.",
+    "registered_email": "Registered Email",
+    "transmitting": "TRANSMITTING...",
+    "already_remember": "Already Remember?",
+    "sign_in_instead": "Sign In Instead",
+    "new_secure_password": "New Secure Password",
+    "finalize_recovery": "FINALIZE RECOVERY",
+    "invalid_link_title": "Invalid Link",
+    "invalid_link_desc": "Reset token missing or compromised.",
+    "token_expired": "This reset link has expired or is mathematically invalid.",
+    "request_new_link": "REQUEST NEW LINK",
+    "encrypting": "ENCRYPTING...",
+    "passwords_mismatch": "Passwords do not match!",
+    "success_reset": "Password updated!",
+    "init_session": "Initializing Security Session..."
   },
   "contact": {
     "sub": "Contact Us",
@@ -1000,7 +1038,7 @@
     "account_label": "Admin Account",
     "admin_aceh": "Aceh Admin",
     "super_admin": "Super Admin",
-    "command_center": "Command Center",
+    "command_center": "Dashboard",
     "unit_kerja": "Aceh Recovery Acceleration Task Force",
     "users_subtitle": "Manage administrator and field operator access.",
     "add_user": "Add User",
@@ -1254,5 +1292,16 @@
       "content": "You have the right to access, correct, or request the deletion of your personal data stored in our system at any time through the account settings menu or by contacting our support service."
     },
     "contact_us": "Have questions regarding your privacy? Contact us at support@ukp2sa.id"
+  },
+  "error": {
+    "title_anomaly": "Anomaly Detected",
+    "title_missing": "Information Not Found",
+    "desc_sec_breach": "Your access privileges are insufficient for this module. Please contact Admin Support.",
+    "desc_zone_missing": "Information transmission interrupted or requested data is unavailable in the database.",
+    "desc_infra_fail": "Main server experiencing transmission failure. Automatic recovery efforts are in progress.",
+    "desc_anomaly": "An unidentified information transmission disturbance has occurred on the dashboard.",
+    "button_reinit": "Initialize Again",
+    "button_dashboard": "Main Dashboard",
+    "report_id_label": "REPORT_IDENTIFIER_ID"
   }
 }

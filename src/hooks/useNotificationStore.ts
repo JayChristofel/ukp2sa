@@ -12,6 +12,7 @@ export interface NotificationItem {
   priority?: "low" | "medium" | "high";
   actionLabel?: string;
   link?: string;
+  createdAt: string;
 }
 
 interface NotificationState {

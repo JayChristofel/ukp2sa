@@ -54,10 +54,10 @@ export default function RegisterPage() {
     });
 
     toast.promise(registerPromise, {
-      loading: lang === "en" ? "Processing entry..." : "Memproses pendaftaran...",
+      loading: d.processing || "PROCESSING...",
       success: () => {
         router.push(`/${lang}/auth/login`);
-        return lang === "en" ? "Account created! Please sign in." : "Akun berhasil dibuat! Silakan login.";
+        return d.success_register || "Account created! Please sign in.";
       },
       error: (err: any) => {
         setLoading(false);
@@ -74,12 +74,14 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout
-      title={d.register_title || "Join Protocol"}
-      subtitle={d.register_subtitle || "Aceh Recovery Ecosystem Access"}
+      title={d.register_title || "Create Account"}
+      subtitle={d.register_subtitle || "Join the Aceh Recovery Ecosystem"}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="name">Nama Lengkap</Label>
+          <Label htmlFor="name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+            {d.full_name || "Full Name"}
+          </Label>
           <Input
             id="name"
             name="name"
@@ -87,12 +89,14 @@ export default function RegisterPage() {
             required
             autoFocus
             disabled={loading}
-            className="h-12 rounded-2xl md:rounded-3xl"
+            className="h-14 rounded-2xl md:rounded-3xl border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 transition-all focus:ring-primary/20"
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+            Email
+          </Label>
           <Input
             id="email"
             name="email"
@@ -100,13 +104,15 @@ export default function RegisterPage() {
             placeholder="nama@aceh.go.id"
             required
             disabled={loading}
-            className="h-12 rounded-2xl md:rounded-3xl"
+            className="h-14 rounded-2xl md:rounded-3xl border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 transition-all focus:ring-primary/20"
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+              Password
+            </Label>
             <Input
               id="password"
               name="password"
@@ -114,11 +120,13 @@ export default function RegisterPage() {
               placeholder="••••••••"
               required
               disabled={loading}
-              className="h-12 rounded-2xl md:rounded-3xl"
+              className="h-14 rounded-2xl md:rounded-3xl border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 transition-all focus:ring-primary/20"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirm-password">Konfirmasi</Label>
+            <Label htmlFor="confirm-password" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+              {d.confirm_password || "Confirm"}
+            </Label>
             <Input
               id="confirm-password"
               name="confirm-password"
@@ -126,7 +134,7 @@ export default function RegisterPage() {
               placeholder="••••••••"
               required
               disabled={loading}
-              className="h-12 rounded-2xl md:rounded-3xl"
+              className="h-14 rounded-2xl md:rounded-3xl border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 transition-all focus:ring-primary/20"
             />
           </div>
         </div>
@@ -141,21 +149,21 @@ export default function RegisterPage() {
           />
           <Label
             htmlFor="terms"
-            className="mb-0 text-[11px] md:text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer leading-tight"
+            className="mb-0 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer leading-tight"
           >
-            I agree with the{" "}
+            {d.agree_terms || "I agree with the"}{" "}
             <Link
               href={`/${lang}/terms`}
-              className="text-primary-500 font-black hover:underline"
+              className="text-primary-500 font-black hover:underline underline-offset-4"
             >
-              Registry Policy & Security Protocols
+              {d.terms_policy || "Registry Policy & Security Protocols"}
             </Link>
           </Label>
         </div>
 
         <motion.div 
-          whileHover={!loading ? { scale: 1.02 } : {}} 
-          whileTap={!loading ? { scale: 0.95, rotate: -0.5 } : {}}
+          whileHover={!loading ? { scale: 1.02, y: -2 } : {}} 
+          whileTap={!loading ? { scale: 0.98 } : {}}
         >
           <Button
             type="submit"
@@ -168,11 +176,11 @@ export default function RegisterPage() {
               {loading ? (
                 <>
                   <Loader2 size={24} className="animate-spin text-primary" />
-                  <span className="animate-pulse">{lang === "en" ? "VERIFYING..." : "MENDAFTAR..."}</span>
+                  <span className="animate-pulse">{d.registering || "REGISTERING..."}</span>
                 </>
               ) : (
                 <>
-                  <span className="z-10">{d.register_here || "Initiate Access"}</span>
+                  <span className="z-10">{d.register_here || "INITIATE ACCESS"}</span>
                   <UserPlus size={20} className="group-hover:translate-x-2 transition-transform duration-300" />
                   <Sparkles size={16} className="absolute -top-4 -right-6 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </>
@@ -181,11 +189,11 @@ export default function RegisterPage() {
           </Button>
         </motion.div>
 
-        <p className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
-          Already have an account?{" "}
+        <p className="text-center text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400">
+          {lang === "en" ? "Already have an account?" : "Sudah punya akun?"}{" "}
           <Link
             href={`/${lang}/auth/login`}
-            className="font-bold text-primary-500 hover:text-primary-600 transition-colors"
+            className="text-primary-500 hover:text-primary-600 transition-colors underline decoration-primary/30 underline-offset-4"
           >
             {d.login_button || "Masuk"}
           </Link>

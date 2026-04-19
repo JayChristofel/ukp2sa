@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect } from "react";
 import { useTheme as useNextTheme } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
+import { useAndroidBackButton } from "@/hooks/useAndroidBackButton";
 
 // Re-export auth hooks biar gak perlu ganti import di banyak file
 export { useAuth, useSession } from "@/stores/authStore";
@@ -27,6 +28,9 @@ const queryClient = new QueryClient();
 /** Auth Initializer — fetch session sekali saat app mount */
 function AuthInitializer({ children }: { children: React.ReactNode }) {
   const fetchSession = useAuthStore((s) => s.fetchSession);
+
+  // Intercept Android hardware back button globally
+  useAndroidBackButton();
 
   useEffect(() => {
     fetchSession();

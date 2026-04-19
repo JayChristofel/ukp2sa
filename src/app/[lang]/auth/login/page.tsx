@@ -74,11 +74,13 @@ function LoginForm() {
               exit={{ opacity: 0, y: -20, scale: 0.9 }}
               className="flex items-start gap-4 p-5 rounded-[2rem] bg-rose-50/80 dark:bg-rose-950/30 backdrop-blur-xl border border-rose-200/50 dark:border-rose-500/20 shadow-lg shadow-rose-500/10"
             >
-              <div className="p-2 bg-rose-500 rounded-xl text-white">
+              <div className="p-2 bg-rose-500 rounded-xl text-white shrink-0">
                  <AlertCircle size={18} />
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 opacity-60">Error Detected</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-rose-500 opacity-60">
+                  {d.error_detected || "ERROR DETECTED"}
+                </span>
                 <p className="text-sm font-bold text-rose-700 dark:text-rose-400 leading-tight">{formError}</p>
               </div>
             </motion.div>
@@ -92,11 +94,13 @@ function LoginForm() {
               exit={{ opacity: 0, y: -20, scale: 0.9 }}
               className="flex items-start gap-4 p-5 rounded-[2rem] bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-xl border border-emerald-200/50 dark:border-emerald-500/20 shadow-lg shadow-emerald-500/10"
             >
-              <div className="p-2 bg-emerald-500 rounded-xl text-white">
+              <div className="p-2 bg-emerald-500 rounded-xl text-white shrink-0">
                  <CheckCircle2 size={18} />
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 opacity-60">Success!</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 opacity-60">
+                  {dict?.common?.success || "SUCCESS!"}
+                </span>
                 <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400 leading-tight">{formSuccess}</p>
               </div>
             </motion.div>
@@ -104,7 +108,9 @@ function LoginForm() {
         </AnimatePresence>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+            Email
+          </Label>
           <Input
             id="email"
             name="email"
@@ -113,15 +119,18 @@ function LoginForm() {
             required
             autoFocus
             disabled={loading}
+            className="h-14 rounded-2xl md:rounded-3xl border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 transition-all focus:ring-primary/20"
           />
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+          <div className="flex items-center justify-between px-1">
+            <Label htmlFor="password" className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Password
+            </Label>
             <Link
               href={`/${lang}/auth/forgot-password`}
-              className="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors uppercase tracking-widest"
+              className="text-[10px] font-black text-primary-500 hover:text-primary-600 transition-colors uppercase tracking-widest underline decoration-primary/30 underline-offset-4"
             >
               {d.forgot_password || "FORGOT PASSWORD?"}
             </Link>
@@ -132,14 +141,14 @@ function LoginForm() {
               name="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
-              className="pr-12"
+              className="h-14 pr-12 rounded-2xl md:rounded-3xl border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-800/50 transition-all focus:ring-primary/20"
               required
               disabled={loading}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors h-10 w-10 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-white/10"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -147,8 +156,8 @@ function LoginForm() {
         </div>
 
         <motion.div 
-           whileHover={!loading ? { scale: 1.02 } : {}} 
-           whileTap={!loading ? { scale: 0.95, rotate: -0.5 } : {}}
+           whileHover={!loading ? { scale: 1.02, y: -2 } : {}} 
+           whileTap={!loading ? { scale: 0.98 } : {}}
         >
           <Button
             type="submit"
@@ -161,11 +170,11 @@ function LoginForm() {
               {loading ? (
                 <>
                   <Loader2 size={24} className="animate-spin text-primary" />
-                  <span className="animate-pulse">{lang === "en" ? "IDENTIFYING..." : "MENGIDENTIFIKASI..."}</span>
+                  <span className="animate-pulse">{d.identifying || "IDENTIFYING..."}</span>
                 </>
               ) : (
                 <>
-                  <span className="z-10">{d.login_button || "Secure Entry"}</span>
+                  <span className="z-10">{d.login_button || "SECURE ENTRY"}</span>
                   <LogIn size={20} className="group-hover:translate-x-2 transition-transform duration-300" />
                   <Sparkles size={16} className="absolute -top-4 -right-6 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </>
@@ -174,11 +183,11 @@ function LoginForm() {
           </Button>
         </motion.div>
 
-        <p className="text-center text-sm font-medium text-slate-500 dark:text-slate-400">
+        <p className="text-center text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400">
           {d.no_account || "Don't have an account?"}{" "}
           <Link
             href={`/${lang}/auth/register`}
-            className="font-bold text-primary-500 hover:text-primary-600 transition-colors"
+            className="text-primary-500 hover:text-primary-600 transition-colors underline decoration-primary/30 underline-offset-4"
           >
             {d.register_here || "Register Here"}
           </Link>

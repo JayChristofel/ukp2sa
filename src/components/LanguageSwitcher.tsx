@@ -64,13 +64,13 @@ export const LanguageSwitcher = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-3 bg-white/50 dark:bg-slate-900/50 border border-white/20 dark:border-slate-800/50 rounded-2xl shadow-bento hover:scale-105 active:scale-95 transition-all duration-300 group"
+        className="flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-3 bg-white/50 dark:bg-slate-900/50 border border-white/20 dark:border-slate-800/50 rounded-2xl shadow-bento hover:scale-105 active:scale-95 transition-all duration-300 group"
       >
         <Languages
           size={18}
           className="text-primary-500 group-hover:rotate-12 transition-transform"
         />
-        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+        <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
           {currentLang.code}
         </span>
         <ChevronDown

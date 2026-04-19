@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, Suspense } from "react";
+import axios from "axios";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui";
 import {
@@ -10,12 +11,11 @@ import {
   Phone,
   User,
   MessageSquare,
+  Loader2,
+  Navigation,
 } from "lucide-react";
-import { Report, ReportStatus } from "@/lib/types";
 import { useI18n } from "@/app/[lang]/providers";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { Loader2, Navigation } from "lucide-react";
-
 function LaporanBaruContent() {
   const dict = useI18n();
   const d = dict?.report_new || {};
@@ -55,31 +55,26 @@ function LaporanBaruContent() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    const newReport: Report = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: formData.title,
-      description: formData.description,
-      location: formData.location,
-      regency: formData.regency,
-      reporterName: formData.reporterName,
-      contactPhone: formData.contactPhone,
-      latitude: coords?.latitude.toString() || "",
-      longitude: coords?.longitude.toString() || "",
-      timeAgo: dr.time_just_now || "Baru saja",
-      status: ReportStatus.PENDING,
-      category: program || instansi || "Laporan Umum",
-      source: "mobile",
-      reporterType: instansi ? "partner" : "masyarakat",
-      createdAt: new Date().toISOString(),
-    };
-
     try {
-      // await addReport(newReport); // Stubbed
-      console.log("Mock report created:", newReport);
-      setIsSuccess(true);
-      setTimeout(() => router.push(`/${dict?.lang || "id"}`), 3000);
-    } catch (err) {
+      const { data } = await axios.post("/api/reports", {
+        fullName: formData.reporterName,
+        phone: formData.contactPhone,
+        description: formData.description,
+        address: formData.location,
+        regency: formData.regency,
+        category: program || instansi || "Laporan Umum",
+        latitude: coords?.latitude || 0,
+        longitude: coords?.longitude || 0,
+      });
+
+      if (data.success) {
+        setIsSuccess(true);
+        setTimeout(() => router.push(`/${dict?.lang || "id"}`), 3000);
+      }
+    } catch (err: any) {
       console.error(err);
+      const errMsg = err.response?.data?.error || "Gagal mengirim laporan. Coba lagi nanti.";
+      alert(errMsg); // Or use toast if available in this component (I see no toast import, let me add it or just use alert for now as I strictly edit the block)
     } finally {
       setIsSubmitting(false);
     }

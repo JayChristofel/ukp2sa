@@ -8,7 +8,7 @@ const getHandler = async () => {
     const supabase = await createClient();
     const { data: roles, error } = await supabase
       .from('roles')
-      .select('*')
+      .select('id, name, description, permissions, created_at, updated_at')
       .order('name');
 
     if (error) throw error;
@@ -54,14 +54,16 @@ const deleteHandler = async (req: Request) => {
   }
 };
 
-/** POST /api/admin/roles — Create or Update role */
-const postHandler = async (req: Request) => {
+
+// Semua handler admin roles wajib token valid + role admin
+export const GET = secureRoute(getHandler, { roles: ['admin'] });
+export const DELETE = secureRoute(deleteHandler, { roles: ['admin'] });
+export const POST = secureRoute(async (req: Request, { body }: any) => {
   try {
-    const body = await req.json();
     const { id, name, description, permissions } = body;
 
     if (!id || !name) {
-      return NextResponse.json({ error: "ID and Name are required" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "ID and Name are required" }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -79,14 +81,9 @@ const postHandler = async (req: Request) => {
 
     if (error) throw error;
 
-    return NextResponse.json({ data: updatedRole });
+    return NextResponse.json({ success: true, data: updatedRole });
   } catch (error: any) {
     console.error("Save Role Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Gagal menyimpan data role." }, { status: 500 });
   }
-};
-
-// Semua handler admin roles wajib token valid
-export const GET = secureRoute(getHandler);
-export const DELETE = secureRoute(deleteHandler);
-export const POST = secureRoute(postHandler);
+}, { roles: ['admin'] });

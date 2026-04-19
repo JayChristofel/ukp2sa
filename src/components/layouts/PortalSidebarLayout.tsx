@@ -45,7 +45,7 @@ interface PortalSidebarLayoutProps {
 const PortalSidebarLayout: React.FC<PortalSidebarLayoutProps> = ({
   children,
   portalTitle,
-  portalSubtitle = "UKP2SA Command Center",
+  portalSubtitle = "UKP2SA Dashboard",
   isDark,
   toggleTheme,
 }) => {
@@ -174,7 +174,7 @@ const SidebarContent: React.FC<PortalSidebarLayoutProps> = ({
   ];
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden font-display">
+    <div className="flex h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 transition-colors duration-500 overflow-hidden font-display">
       {/* Desktop Sidebar */}
       <aside
         className={`${
@@ -295,7 +295,7 @@ const SidebarContent: React.FC<PortalSidebarLayoutProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
-        <header className="h-20 border-b border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-lg flex items-center justify-between px-4 md:px-8 z-40">
+        <header className="h-16 md:h-20 border-b border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/30 backdrop-blur-lg flex items-center justify-between px-3 sm:px-4 md:px-8 z-40">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -388,7 +388,7 @@ const SidebarContent: React.FC<PortalSidebarLayoutProps> = ({
         </header>
 
         {/* Dynamic Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-12 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-100/30 via-transparent to-transparent dark:from-primary-900/5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-12 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-100/30 via-transparent to-transparent dark:from-primary-900/5">
           <div className="max-w-5xl mx-auto">{children}</div>
         </main>
       </div>
@@ -409,7 +409,7 @@ const SidebarContent: React.FC<PortalSidebarLayoutProps> = ({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-80 bg-white dark:bg-slate-950 shadow-2xl z-[70] md:hidden flex flex-col p-6"
+              className="fixed inset-y-0 left-0 w-[min(20rem,85vw)] bg-white dark:bg-slate-950 shadow-2xl z-[70] md:hidden flex flex-col p-4 sm:p-6"
             >
               <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-3">

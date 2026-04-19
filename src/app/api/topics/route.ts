@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/server";
+import { secureRoute } from "@/lib/api-middleware";
 
-export async function GET() {
+export const GET = secureRoute(async () => {
   try {
     const supabase = await createClient();
     const { data: topics, error } = await supabase
       .from('topics')
-      .select('*')
+      .select('id, name_id, name_en, count')
       .order('id', { ascending: true });
     
     if (error) throw error;
@@ -26,6 +27,7 @@ export async function GET() {
       data: formattedTopics
     });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    console.error("Topics API Error:", error);
+    return NextResponse.json({ success: false, error: "Gagal mengambil data topik aduan." }, { status: 500 });
   }
-}
+}, { isPublic: true, limit: 50 });
